@@ -3,6 +3,11 @@
 #include "PasswordDbClass.h"
 #include "Server.h"
 
+Server::Server()
+    : encryptedLocalStorage("storage.enc", "01234567890123456789012345678901", "1234567890123456"),
+      passwordDb("01234567890123456789012345678901", "1234567890123456") {}
+
+
 void Server::runServer() {
     define_routes();
     app.bindaddr("127.0.0.1").port(18080).run();
@@ -178,6 +183,64 @@ CROW_ROUTE(app,"/generate_password/<int>").methods("GET"_method)
     json["generated_password"] = pass;
     return crow::response(json);
 });
+
+CROW_ROUTE(app, "/generate_local_storage").methods("GET"_method)
+([this](const crow::request&) {
+    try {
+        std::string data = "temporary_token=abc123;valid_until=2030;";
+        encryptedLocalStorage.write(data);
+        return crow::response(200, "Encrypted local storage generated.");
+    } catch (const std::exception& e) {
+        return crow::response(500, std::string("Error: ") + e.what());
+    }
+});
+
+
+CROW_ROUTE(app, "/export_passwords_encrypted").methods("GET"_method)
+([this](const crow::request& req) {
+    int user_id = std::stoi(urlParams.get("userId"));
+    
+    auto passwords = passwordDb.get_all_passwords_for_user(user_id);
+    crow::json::wvalue json;
+
+    for (const auto& pair : passwords) {
+        json[pair.first] = pair.second;
+    }
+
+    std::string plain = crow::json::dump(json);
+    try {
+        std::string encrypted = encryptedLocalStorage.encrypt(plain);
+        return crow::response(200, encrypted);
+    } catch (const std::exception& e) {
+        return crow::response(500, std::string("Encryption error: ") + e.what());
+    }
+});
+
+
+CROW_ROUTE(app, "/import_passwords_encrypted").methods("POST"_method)
+([this](const crow::request& req) {
+    int user_id = std::stoi(urlParams.get("userId"));
+
+    try {
+        std::string decrypted = encryptedLocalStorage.decrypt(req.body);
+        auto json = crow::json::load(decrypted);
+
+        if (!json) {
+            return crow::response(400, "Invalid decrypted JSON.");
+        }
+
+        for (const auto& key : json.keys()) {
+            std::string website = key;
+            std::string password = json[key].s();
+            passwordDb.add_password(website, password, user_id);
+        }
+
+        return crow::response(200, "Passwords imported and stored securely.");
+    } catch (const std::exception& e) {
+        return crow::response(500, std::string("Decryption/import error: ") + e.what());
+    }
+});
+
 
 
 }

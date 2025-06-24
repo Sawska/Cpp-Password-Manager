@@ -9,25 +9,29 @@
 #include <unordered_set>
 #include "PasswordFilter.h"
 #include "PasswordGenerator.h"
+#include "EncryptedLocalStorage.h"
 
 
 
 class Server {
   public:
+    Server();           
     void runServer();
+
   private:
-  const std::string jwt_secret = "your-256-bit-secret";
+    const std::string jwt_secret = "your-256-bit-secret";
     crow::SimpleApp app;
     UserDb userDb;
     PasswordDb passwordDb;
     PasswordFilter passwordFIlter;
     std::unordered_set<std::string> tokenBlacklist;
     PasswordGenerator passwordGenerator;
+    EncryptedLocalStorage encryptedLocalStorage;
 
     void define_routes();
     std::string create_jwt(const std::string& username);
     bool verify_jwt(const std::string& token);
-
 };
+
 
 #endif // !SERVER_H

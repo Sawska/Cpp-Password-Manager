@@ -13,6 +13,7 @@ add_executable(password_server
   PasswordGenerator.cpp
   PassEncryptorDecryptor.cpp
   Hasher.cpp
+  EncryptedLocalStorage.cpp
 )
 
 
