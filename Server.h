@@ -1,5 +1,4 @@
 #ifndef SERVER_H
-
 #define SERVER_H
 
 #include "crow/app.h"
@@ -10,15 +9,15 @@
 #include "PasswordFilter.h"
 #include "PasswordGenerator.h"
 #include "EncryptedLocalStorage.h"
-
-
+#include "Mode.h"
 
 class Server {
   public:
-    Server();           
+    Server(AppMode mode);           
     void runServer();
 
   private:
+    AppMode mode;
     const std::string jwt_secret = "your-256-bit-secret";
     crow::SimpleApp app;
     UserDb userDb;
@@ -30,8 +29,4 @@ class Server {
 
     void define_routes();
     std::string create_jwt(const std::string& username);
-    bool verify_jwt(const std::string& token);
-};
-
-
-#endif // !SERVER_H
+    bool verify_jwt(const s

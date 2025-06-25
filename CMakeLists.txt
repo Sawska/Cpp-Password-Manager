@@ -14,6 +14,7 @@ add_executable(password_server
   PassEncryptorDecryptor.cpp
   Hasher.cpp
   EncryptedLocalStorage.cpp
+  AppManager.cpp
 )
 
 
@@ -78,7 +79,4 @@ target_include_directories(password_server PRIVATE
 target_link_libraries(password_server PRIVATE
   ${SQLITE3_LIB}
   ${OPENSSL_CRYPTO_LIBRARY}
-  ${ARGON2_LIB}
-)
-
-
+  $

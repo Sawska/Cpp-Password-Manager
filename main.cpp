@@ -1,7 +1,4 @@
-#include "Server.h"
+#include "AppManager.h"
+#include <iostream>
 
-int main() {
-  Server s;
-
-  s.runServer();
-}
+int main(int argc, ch

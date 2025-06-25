@@ -3,10 +3,11 @@
 #include "PasswordDbClass.h"
 #include "Server.h"
 
-Server::Server()
-    : encryptedLocalStorage("storage.enc", "01234567890123456789012345678901", "1234567890123456"),
-      passwordDb("01234567890123456789012345678901", "1234567890123456") {}
 
+Server::Server(AppMode mode)
+    : mode(mode),
+      encryptedLocalStorage("storage.enc", "01234567890123456789012345678901", "1234567890123456"),
+      passwordDb("01234567890123456789012345678901", "1234567890123456") {}
 
 void Server::runServer() {
     define_routes();
@@ -15,6 +16,62 @@ void Server::runServer() {
 
 
 void Server::define_routes() {
+CROW_ROUTE(app, "/").methods("GET"_method)
+([this](const crow::request& req) {
+    if (mode == AppMode::WEB) {
+        
+        std::string auth = req.get_header_value("Authorization");
+        if (auth.empty() || auth.find("Bearer ") != 0 || !verify_jwt(auth.substr(7))) {
+            
+            std::ifstream loginFile("login.html");
+            if (!loginFile.is_open()) {
+                return crow::response(500, "Cannot open login.html");
+            }
+            std::stringstream loginBuffer;
+            loginBuffer << loginFile.rdbuf();
+            return crow::response(401, loginBuffer.str());
+        }
+
+        
+        std::ifstream htmlFile("index.html");
+        if (!htmlFile.is_open()) {
+            return crow::response(500, "Cannot open index.html");
+        }
+        std::stringstream buffer;
+        buffer << htmlFile.rdbuf();
+        return crow::response(200, buffer.str());
+    } else {
+        return crow::response("Password Manager Server Running in APP mode");
+    }
+});
+
+    CROW_ROUTE(app, "/register").methods("GET"_method)
+([this]() {
+    if (mode == AppMode::WEB) {
+        std::ifstream file("register.html");
+        if (!file.is_open()) return crow::response(404, "register.html not found");
+        std::ostringstream content;
+        content << file.rdbuf();
+        return crow::response(content.str());
+    } else {
+        return crow::response("Register endpoint (UI mode)");
+    }
+});
+
+CROW_ROUTE(app, "/login").methods("GET"_method)
+([this]() {
+    if (mode == AppMode::WEB) {
+        std::ifstream file("login.html");
+        if (!file.is_open()) return crow::response(404, "login.html not found");
+        std::ostringstream content;
+        content << file.rdbuf();
+        return crow::response(content.str());
+    } else {
+        return crow::response("Login endpoint (UI mode)");
+    }
+});
+
+
     CROW_ROUTE(app, "/register").methods("POST"_method)
     ([this](const crow::request& req) {
         auto body = crow::json::load(req.body);
@@ -209,63 +266,3 @@ CROW_ROUTE(app, "/export_passwords_encrypted").methods("GET"_method)
 
     std::string plain = crow::json::dump(json);
     try {
-        std::string encrypted = encryptedLocalStorage.encrypt(plain);
-        return crow::response(200, encrypted);
-    } catch (const std::exception& e) {
-        return crow::response(500, std::string("Encryption error: ") + e.what());
-    }
-});
-
-
-CROW_ROUTE(app, "/import_passwords_encrypted").methods("POST"_method)
-([this](const crow::request& req) {
-    int user_id = std::stoi(urlParams.get("userId"));
-
-    try {
-        std::string decrypted = encryptedLocalStorage.decrypt(req.body);
-        auto json = crow::json::load(decrypted);
-
-        if (!json) {
-            return crow::response(400, "Invalid decrypted JSON.");
-        }
-
-        for (const auto& key : json.keys()) {
-            std::string website = key;
-            std::string password = json[key].s();
-            passwordDb.add_password(website, password, user_id);
-        }
-
-        return crow::response(200, "Passwords imported and stored securely.");
-    } catch (const std::exception& e) {
-        return crow::response(500, std::string("Decryption/import error: ") + e.what());
-    }
-});
-
-
-
-}
-
-
-std::string Server::create_jwt(const std::string& username) {
-    return jwt::create()
-        .set_issuer("yourapp")
-        .set_type("JWS")
-        .set_payload_claim("username", jwt::claim(username))
-        .set_issued_at(std::chrono::system_clock::now())
-        .set_expires_at(std::chrono::system_clock::now() + std::chrono::minutes{60})
-        .sign(jwt::algorithm::hs256{jwt_secret});
-}
-
-bool Server::verify_jwt(const std::string& token) {
-    try {
-        if (tokenBlacklist.count(token)) return false;
-        auto decoded = jwt::decode(token);
-        auto verifier = jwt::verify()
-            .allow_algorithm(jwt::algorithm::hs256{jwt_secret})
-            .with_issuer("yourapp");
-        verifier.verify(decoded);
-        return true;
-    } catch (...) {
-        return false;
-    }
-}
