@@ -29,4 +29,7 @@ class Server {
 
     void define_routes();
     std::string create_jwt(const std::string& username);
-    bool verify_jwt(const s
+    bool verify_jwt(const std::string& token);
+};
+
+#endif // SERVER_H

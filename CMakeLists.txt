@@ -79,4 +79,7 @@ target_include_directories(password_server PRIVATE
 target_link_libraries(password_server PRIVATE
   ${SQLITE3_LIB}
   ${OPENSSL_CRYPTO_LIBRARY}
-  $
+  ${ARGON2_LIB}
+)
+
+

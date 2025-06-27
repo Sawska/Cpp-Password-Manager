@@ -13,6 +13,7 @@
     int delete_user(const std::string& username);
     int update_user(const std::string& new_username, const std::string& new_password, const std::string& old_username);
     int login_user(const std::string& username, const std::string& password);
+    int get_userid(const std::string& username, const std::string& password);
   private:
     sqlite3* db = nullptr;
     Hasher hasher;

@@ -33,7 +33,7 @@ CROW_ROUTE(app, "/").methods("GET"_method)
         }
 
         
-        std::ifstream htmlFile("index.html");
+        std::ifstream htmlFile("src/index.html");
         if (!htmlFile.is_open()) {
             return crow::response(500, "Cannot open index.html");
         }
@@ -48,7 +48,7 @@ CROW_ROUTE(app, "/").methods("GET"_method)
     CROW_ROUTE(app, "/register").methods("GET"_method)
 ([this]() {
     if (mode == AppMode::WEB) {
-        std::ifstream file("register.html");
+        std::ifstream file("src/register.html");
         if (!file.is_open()) return crow::response(404, "register.html not found");
         std::ostringstream content;
         content << file.rdbuf();
@@ -61,7 +61,20 @@ CROW_ROUTE(app, "/").methods("GET"_method)
 CROW_ROUTE(app, "/login").methods("GET"_method)
 ([this]() {
     if (mode == AppMode::WEB) {
-        std::ifstream file("login.html");
+        std::ifstream file("src/login.html");
+        if (!file.is_open()) return crow::response(404, "login.html not found");
+        std::ostringstream content;
+        content << file.rdbuf();
+        return crow::response(content.str());
+    } else {
+        return crow::response("Login endpoint (UI mode)");
+    }
+});
+
+CROW_ROUTE(app, "/genPass").methods("GET"_method)
+([this]() {
+    if (mode == AppMode::WEB) {
+        std::ifstream file("src/genPass.html");
         if (!file.is_open()) return crow::response(404, "login.html not found");
         std::ostringstream content;
         content << file.rdbuf();
@@ -81,7 +94,10 @@ CROW_ROUTE(app, "/login").methods("GET"_method)
         std::string password = body["password"].s();
 
         if (userDb.create_user(login, password) == 0)
-            return crow::response(200, "User registered");
+            crow::json::wvalue res;
+            const int userid = userDb.get_userid(login,password);
+            res["Userid"] = userid;
+            return crow::response(200, res);
         else
             return crow::response(500, "Registration failed");
     });
@@ -96,6 +112,8 @@ CROW_ROUTE(app, "/login").methods("GET"_method)
 
         if (userDb.login_user(login, password) == 0) {
             crow::json::wvalue res;
+            const int userid = userDb.get_userid(login,password);
+            res["Userid"] = userid;
             res["token"] = create_jwt(login);
             return crow::response(200, res);
         } else {
@@ -266,3 +284,44 @@ CROW_ROUTE(app, "/export_passwords_encrypted").methods("GET"_method)
 
     std::string plain = crow::json::dump(json);
     try {
+        std::string encrypted = encryptedLocalStorage.encrypt(plain);
+        return crow::response(200, encrypted);
+    } catch (const std::exception& e) {
+        return crow::response(500, std::string("Encryption error: ") + e.what());
+    }
+});
+
+
+CROW_ROUTE(app, "/import_passwords_encrypted").methods("POST"_method)
+([this](const crow::request& req) {
+    int user_id = std::stoi(urlParams.get("userId"));
+
+    try {
+        std::string decrypted = encryptedLocalStorage.decrypt(req.body);
+        auto json = crow::json::load(decrypted);
+
+        if (!json) {
+            return crow::response(400, "Invalid decrypted JSON.");
+        }
+
+        for (const auto& key : json.keys()) {
+            std::string website = key;
+            std::string password = json[key].s();
+            passwordDb.add_password(website, password, user_id);
+        }
+
+        return crow::response(200, "Passwords imported and stored securely.");
+    } catch (const std::exception& e) {
+        return crow::response(500, std::string("Decryption/import error: ") + e.what());
+    }
+});
+
+
+
+}
+
+
+std::string Server::create_jwt(const std::string& username) {
+    return jwt::create()
+        .set_issuer("yourapp")
+        .set_type("JWS")
