@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Password Generator</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+    }
+    button {
+      margin-right: 1rem;
+      padding: 0.5rem 1rem;
+    }
+    #result {
+      margin-top: 1rem;
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
+  </style>
+</head>
+<body>
+
+      <link href="//maxcdn.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<link rel="stylesheet" href="css/navbar.css" />
+
+
+
+<div class="navbar navbar-expand-md navbar-dark bg-dark mb-4" role="navigation">
+  <a class="navbar-brand" href="#">Password Manager</a>
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse"
+    aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  <div class="collapse navbar-collapse" id="navbarCollapse">
+    <ul class="navbar-nav mr-auto">
+      <li class="nav-item active">
+        <a class="nav-link" href="/">Home</a>
+      </li>
+      <li class="nav-item active">
+        <a class="nav-link" href="/genPass">GenPassword</a>
+      </li>
+      <li class="nav-item active">
+        <button class="btn btn-outline-danger my-2 my-sm-0 ml-2" id="logoutBtn">Logout</button>
+      </li>
+    </ul>
+
+    <form class="form-inline mt-2 mt-md-0" id="navbarSearchForm">
+      <input class="form-control mr-sm-2" id="navbarSearchInput" type="text" placeholder="Search Website" required />
+      <input class="form-control mr-sm-2" id="navbarUserId" type="number" placeholder="User ID" required />
+      <button class="btn btn-outline-success my-2 my-sm-0" type="submit">Search</button>
+    </form>
+  </div>
+</div>
+
+  <h1>Password Generator</h1>
+
+  <button onclick="generatePassword(8)">Generate 8-character password</button>
+  <button onclick="generatePassword(16)">Generate 16-character password</button>
+
+  <div id="result">Generated password will appear here.</div>
+
+  <script>
+    async function generatePassword(length) {
+      const res = await fetch(`/generate_password/${length}`);
+      if (!res.ok) {
+        const error = await res.json();
+        document.getElementById("result").textContent = "Error: " + (error.error || res.statusText);
+        return;
+      }
+      const data = await res.json();
+      document.getElementById("result").textContent = "Generated: " + data.generated_password;
+    }
+  </script>
+
+</body>
+</html>

@@ -3,15 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Register</title>
-  <link rel="stylesheet" href="login.css" />
-  <!-- Font Awesome CDN link for icons -->
+  <title>Login</title>
+  <link rel="stylesheet" href="css/login.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" />
 </head>
 <body>
   <div class="wrapper">
-    <div class="title"><span>Register</span></div>
-    <form id="registerForm">
+    <div class="title"><span>Login</span></div>
+    <form id="loginForm">
       <div class="row">
         <i class="fas fa-user"></i>
         <input type="text" name="login" placeholder="Email" required />
@@ -20,33 +19,23 @@
         <i class="fas fa-lock"></i>
         <input type="password" name="password" placeholder="Password" required />
       </div>
-      <div class="row">
-        <i class="fas fa-lock"></i>
-        <input type="password" name="password_veref" placeholder="Confirm Password" required />
-      </div>
       <div class="row button">
-        <input type="submit" value="Register" />
+        <input type="submit" value="Login" />
       </div>
-      <div class="signup-link">Already have an account? <a href="/login">Login now</a></div>
+      <div class="signup-link">Don't have an account? <a href="/register.html">Register now</a></div>
     </form>
   </div>
 
   <script>
-    document.getElementById("registerForm").addEventListener("submit", async function (e) {
+    document.getElementById("loginForm").addEventListener("submit", async function (e) {
       e.preventDefault();
 
       const form = e.target;
       const login = form.login.value;
       const password = form.password.value;
-      const password_veref = form.password_veref.value;
-
-      if (password !== password_veref) {
-        alert("Passwords do not match!");
-        return;
-      }
 
       try {
-        const response = await fetch("/register", {
+        const response = await fetch("/login", {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -55,16 +44,17 @@
         });
 
         if (response.ok) {
-          alert("Registration successful!");
-
           const data = await response.json();
-  localStorage.setItem("Userid",data.Userid);
-  
+
           
-          window.location.href = "/login";
+          localStorage.setItem("userId", data.Userid);    
+          localStorage.setItem("jwt", data.token);        
+
+          alert("Login successful!");
+          window.location.href = "/dashboard.html";
         } else {
           const error = await response.text();
-          alert("Registration failed: " + error);
+          alert("Login failed: " + error);
         }
       } catch (err) {
         console.error("Network error:", err);

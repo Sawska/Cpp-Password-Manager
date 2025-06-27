@@ -23,7 +23,7 @@ CROW_ROUTE(app, "/").methods("GET"_method)
         std::string auth = req.get_header_value("Authorization");
         if (auth.empty() || auth.find("Bearer ") != 0 || !verify_jwt(auth.substr(7))) {
             
-            std::ifstream loginFile("login.html");
+            std::ifstream loginFile("src/login.html");
             if (!loginFile.is_open()) {
                 return crow::response(500, "Cannot open login.html");
             }
@@ -210,10 +210,6 @@ CROW_ROUTE(app, "/genPass").methods("GET"_method)
         return crow::response(json);
     });
 
-    CROW_ROUTE(app, "/").methods("GET"_method)
-    ([] {
-        return crow::response("Password Manager Server Running");
-    });
 
 CROW_ROUTE(app, "/filter_passwords_by_website/<string>").methods("GET"_method)
 ([this](const crow::request& req, std::string website_name) {

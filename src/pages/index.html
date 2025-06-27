@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password manager</title>
+</head>
+<body>
+    <link href="//maxcdn.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<link rel="stylesheet" href="css/navbar.css" />
+
+
+
+<div class="navbar navbar-expand-md navbar-dark bg-dark mb-4" role="navigation">
+  <a class="navbar-brand" href="#">Password Manager</a>
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse"
+    aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  <div class="collapse navbar-collapse" id="navbarCollapse">
+    <ul class="navbar-nav mr-auto">
+      <li class="nav-item active">
+        <a class="nav-link" href="/">Home</a>
+      </li>
+      <li class="nav-item active">
+        <a class="nav-link" href="/genPass">GenPassword</a>
+      </li>
+      <li class="nav-item active">
+        <button class="btn btn-outline-danger my-2 my-sm-0 ml-2" id="logoutBtn">Logout</button>
+      </li>
+    </ul>
+
+    <form id="navbarSearchForm" class="form-inline mb-3">
+  <input class="form-control mr-sm-2" id="navbarSearchInput" type="text" placeholder="Website name" required>
+  <input class="form-control mr-sm-2" id="navbarUserId" type="number" placeholder="User ID" required>
+  <button class="btn btn-outline-success" type="submit">Search</button>
+  <button class="btn btn-outline-secondary ml-2" onclick="loadPasswords()">Clear Filter</button>
+</form>
+
+  </div>
+</div>
+    <main role="main" class="container">
+    <h1 class="mb-4">Password Manager Dashboard</h1>
+
+    <div id="passwordList" class="mb-4">
+      <h3>Stored Passwords</h3>
+      <div id="passwordsOutput" class="bg-light p-3 rounded">Loading...</div>
+    </div>
+
+    <div class="mb-4 d-flex flex-wrap gap-2">
+      <button class="btn btn-success" onclick="addPasswordPrompt()">Add Password</button>
+      <button class="btn btn-primary" onclick="generateLocalStorage()">Generate Local Storage</button>
+      <button class="btn btn-warning" onclick="exportEncryptedPasswords()">Export Encrypted</button>
+      <button class="btn btn-secondary" onclick="importEncryptedPasswords()">Import Encrypted</button>
+    </div>
+</main>
+
+<script>
+async function loadPasswords() {
+  const userId = localStorage.getItem("userId"); 
+  const token = localStorage.getItem("jwt");
+
+  if (!userId || !token) {
+    document.getElementById("passwordsOutput").textContent = "Not logged in.";
+    return;
+  }
+
+  try {
+    const response = await fetch(`/get_passwords?userId=${userId}`, {
+      headers: {
+        "Authorization": "Bearer " + token
+      }
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      renderPasswords(data);
+    } else {
+      const err = await response.text();
+      document.getElementById("passwordsOutput").textContent = "Error: " + err;
+    }
+  } catch (e) {
+    console.error(e);
+    document.getElementById("passwordsOutput").textContent = "Network error.";
+  }
+}
+
+function renderPasswords(data) {
+  const container = document.getElementById("passwordsOutput");
+  container.innerHTML = "";
+
+  Object.entries(data).forEach(([website, password]) => {
+    const item = document.createElement("div");
+    item.className = "d-flex justify-content-between align-items-center border-bottom py-2";
+
+    const info = document.createElement("div");
+    info.textContent = `${website}: ${password}`;
+
+    const btns = document.createElement("div");
+    btns.innerHTML = `
+      <button class="btn btn-sm btn-warning mr-2" onclick="editPassword('${website}', '${password}')">Edit</button>
+      <button class="btn btn-sm btn-danger" onclick="deletePassword('${website}', '${password}')">Delete</button>
+    `;
+
+    item.appendChild(info);
+    item.appendChild(btns);
+    container.appendChild(item);
+  });
+}
+
+function addPasswordPrompt() {
+  const website = prompt("Website:");
+  const password = prompt("Password:");
+  const userId = localStorage.getItem("userId");
+  const token = localStorage.getItem("jwt");
+
+  if (!website || !password || !userId || !token) return;
+
+  fetch("/add_password", {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer " + token,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ website, password, userId: parseInt(userId) })
+  }).then(res => res.text()).then(msg => {
+    alert(msg);
+    loadPasswords();
+  });
+}
+
+function deletePassword(website, password) {
+  const userId = localStorage.getItem("userId");
+  const token = localStorage.getItem("jwt");
+
+  fetch("/delete_password", {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer " + token,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ website, password, userId: parseInt(userId) })
+  }).then(res => res.text()).then(msg => {
+    alert(msg);
+    loadPasswords();
+  });
+}
+
+function editPassword(oldWebsite, oldPassword) {
+  const newWebsite = prompt("New website:", oldWebsite);
+  const newPassword = prompt("New password:", oldPassword);
+  const userId = localStorage.getItem("userId");
+  const token = localStorage.getItem("jwt");
+
+  fetch("/update_password", {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer " + token,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      old_website: oldWebsite,
+      old_password: oldPassword,
+      new_website: newWebsite,
+      new_password: newPassword,
+      userId: parseInt(userId)
+    })
+  }).then(res => res.text()).then(msg => {
+    alert(msg);
+    loadPasswords();
+  });
+}
+
+function generateLocalStorage() {
+  fetch("/generate_local_storage").then(res => res.text()).then(alert);
+}
+
+function exportEncryptedPasswords() {
+  const userId = localStorage.getItem("userId");
+  fetch(`/export_passwords_encrypted?userId=${userId}`)
+    .then(res => res.text())
+    .then(text => {
+      const blob = new Blob([text], { type: "text/plain" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "passwords.enc.txt";
+      a.click();
+    });
+}
+
+function importEncryptedPasswords() {
+  const userId = localStorage.getItem("userId");
+  const encrypted = prompt("Paste encrypted data:");
+
+  fetch(`/import_passwords_encrypted?userId=${userId}`, {
+    method: "POST",
+    body: encrypted
+  }).then(res => res.text()).then(msg => {
+    alert(msg);
+    loadPasswords();
+  });
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  loadPasswords();
+});
+
+
+document.getElementById("logoutBtn").addEventListener("click", async function () {
+    const token = localStorage.getItem("jwt");
+    if (!token) return alert("You are not logged in.");
+
+    const res = await fetch("/logout", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + token
+      }
+    });
+
+    if (res.ok) {
+      alert("Logged out successfully.");
+      localStorage.removeItem("jwt");
+      localStorage.removeItem("userId");
+      window.location.href = "/login.html";
+    } else {
+      alert("Logout failed.");
+    }
+  });
+
+  
+  document.getElementById("navbarSearchForm").addEventListener("submit", async function (e) {
+  e.preventDefault();
+
+  const keyword = document.getElementById("navbarSearchInput").value.trim();
+  const userId = document.getElementById("navbarUserId").value.trim();
+
+  if (!keyword || !userId) {
+    alert("Please enter both Website and User ID.");
+    return;
+  }
+
+  try {
+    const response = await fetch(`/filter_passwords_by_website/${encodeURIComponent(keyword)}?userId=${userId}`);
+    if (!response.ok) {
+      const err = await response.text();
+      alert("Search failed: " + err);
+      return;
+    }
+
+    const data = await response.json();
+    renderPasswords(data);  // Reuse your existing UI renderer
+
+  } catch (err) {
+    console.error(err);
+    alert("Network error during search.");
+  }
+});
+
+</script>
+
+</body>
+</html>
