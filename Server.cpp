@@ -7,7 +7,8 @@
 Server::Server(AppMode mode)
     : mode(mode),
       encryptedLocalStorage("storage.enc", "01234567890123456789012345678901", "1234567890123456"),
-      passwordDb("01234567890123456789012345678901", "1234567890123456") {}
+      passwordDb("01234567890123456789012345678901", "1234567890123456"),  passwordFilter({})
+ {}
 
 void Server::runServer() {
     define_routes();
@@ -252,17 +253,88 @@ CROW_ROUTE(app, "/generate_local_storage").methods("GET"_method)
     }
 });
 
-
 CROW_ROUTE(app, "/export_passwords_encrypted").methods("GET"_method)
 ([this](const crow::request& req) {
+    std::string auth = req.get_header_value("Authorization");
+    if (auth.empty() || auth.find("Bearer ") != 0 || !verify_jwt(auth.substr(7)))
+        return crow::response(401, "Unauthorized");
+
+    auto urlParams = crow::query_string(req.url_params);
+    if (!urlParams.get("userId"))
+        return crow::response(400, "Missing userId");
+
     int user_id = std::stoi(urlParams.get("userId"));
-    
     auto passwords = passwordDb.get_all_passwords_for_user(user_id);
-    crow::json::wvalue json;
 
+    // Ручна серіалізація JSON
+    std::string plain = "{";
+    bool first = true;
     for (const auto& pair : passwords) {
-        json[pair.first] = pair.second;
+        if (!first) plain += ",";
+        first = false;
+        plain += "\"" + pair.first + "\":\"" + pair.second + "\"";
     }
+    plain += "}";
 
-    std::string plain = crow::json::dump(json);
     try {
+        std::string encrypted = encryptedLocalStorage.encrypt(plain);
+        return crow::response(200, encrypted);
+    } catch (const std::exception& e) {
+        return crow::response(500, std::string("Encryption error: ") + e.what());
+    }
+});
+
+
+
+CROW_ROUTE(app, "/import_passwords_encrypted").methods("POST"_method)
+([this](const crow::request& req) {
+    auto urlParams = crow::query_string(req.url_params);
+    int user_id = std::stoi(urlParams.get("userId"));
+
+    try {
+        std::string decrypted = encryptedLocalStorage.decrypt(req.body);
+        auto json = crow::json::load(decrypted);
+
+        if (!json) {
+            return crow::response(400, "Invalid decrypted JSON.");
+        }
+
+        for (const auto& key : json.keys()) {
+            std::string website = key;
+            std::string password = json[key].s();
+            passwordDb.add_password(website, password, user_id);
+        }
+
+        return crow::response(200, "Passwords imported and stored securely.");
+    } catch (const std::exception& e) {
+        return crow::response(500, std::string("Decryption/import error: ") + e.what());
+    }
+});
+
+
+
+}
+
+std::string Server::create_jwt(const std::string& username) {
+    return jwt::create()
+        .set_issuer("yourapp")
+        .set_type("JWS")
+        .set_payload_claim("username", jwt::claim(username))
+        .set_issued_at(std::chrono::system_clock::now())
+        .set_expires_at(std::chrono::system_clock::now() + std::chrono::minutes{60})
+        .sign(jwt::algorithm::hs256{jwt_secret});
+}
+
+bool Server::verify_jwt(const std::string& token) {
+    try {
+        if (tokenBlacklist.count(token)) return false;
+        auto decoded = jwt::decode(token);
+        auto verifier = jwt::verify()
+            .allow_algorithm(jwt::algorithm::hs256{jwt_secret})
+            .with_issuer("yourapp");
+        verifier.verify(decoded);
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
