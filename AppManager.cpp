@@ -3,6 +3,7 @@
 #include <chrono>
 #include <thread>
 
+
 AppManager::AppManager(AppMode mode) : mode(mode), server(mode) {}
 
 AppManager::~AppManager() {

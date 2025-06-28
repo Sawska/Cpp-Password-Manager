@@ -22,7 +22,7 @@ class Server {
     crow::SimpleApp app;
     UserDb userDb;
     PasswordDb passwordDb;
-    PasswordFilter passwordFIlter;
+    PasswordFilter passwordFilter;
     std::unordered_set<std::string> tokenBlacklist;
     PasswordGenerator passwordGenerator;
     EncryptedLocalStorage encryptedLocalStorage;

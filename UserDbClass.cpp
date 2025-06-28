@@ -12,7 +12,7 @@ UserDb::UserDb() {
 int UserDb::create_user(const std::string& username, const std::string& password) {
     if (open_db() != SQLITE_OK) return 1;
 
-    std::string hashed_password = hasher.hash(password);
+    std::string hashed_password = hasher.hash_password(password);
 
     const char* sql = "INSERT INTO users (login, password) VALUES (?, ?);";
     sqlite3_stmt* stmt = nullptr;
@@ -79,7 +79,7 @@ int UserDb::delete_user(const std::string& username) {
 int UserDb::update_user(const std::string& new_username, const std::string& new_password, const std::string& old_username) {
     if (open_db() != SQLITE_OK) return 1;
 
-    std::string new_hashed_password = hasher.hash(new_password);
+    std::string new_hashed_password = hasher.hash_password(new_password);
 
     const char* sql = "UPDATE users SET login = ?, password = ? WHERE login = ?;";
     sqlite3_stmt* stmt = nullptr;
@@ -143,7 +143,7 @@ int UserDb::login_user(const std::string& username, const std::string& password)
     sqlite3_finalize(stmt);
     sqlite3_close(db);
 
-    if (hasher.verify(password, stored_hash)) {
+    if (hasher.verify_password(password, stored_hash)) {
         std::cout << "Login successful\n";
         return 0;
     } else {
