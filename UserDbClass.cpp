@@ -183,7 +183,7 @@ int UserDb::get_userid(const std::string &username, const std::string &password)
     sqlite3_finalize(stmt);
     sqlite3_close(db);
 
-    if (hasher.verify(password, stored_hash)) {
+    if (hasher.verify_password(password, stored_hash)) {
         return user_id;
     } else {
         std::cerr << "Password verification failed.\n";
@@ -216,4 +216,45 @@ int UserDb::create_table() {
 
         if (rc != SQLITE_OK) {
             std::cerr << "SQL error (create_table): " << errMsg << "\n";
-            sqlite3_
+            sqlite3_free(errMsg);
+        } else {
+            std::cout << "Table created successfully\n";
+        }
+
+        return rc;
+}
+
+int UserDb::check_if_table_exists() {
+    int rc = open_db();
+    if (rc != SQLITE_OK) return rc;
+
+    const char* sql = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='users';";
+    int tableExists = 0;
+
+    auto callback = [](void* data, int argc, char** argv, char**) -> int {
+        int* exists = static_cast<int*>(data);
+        if (argc > 0 && argv[0]) {
+            *exists = std::strtol(argv[0], nullptr, 10);
+        }
+        return 0;
+    };
+
+    char* errMsg = nullptr;
+    rc = sqlite3_exec(db, sql, callback, &tableExists, &errMsg);
+
+    if (rc != SQLITE_OK) {
+        std::cerr << "SQL error (check_if_table_exists): " << errMsg << "\n";
+        sqlite3_free(errMsg);
+    } else if (tableExists == 0) {
+        std::cout << "Table does not exist. Creating...\n";
+        rc = create_table();
+        if (rc != SQLITE_OK) {
+            std::cerr << "Failed to create table\n";
+        }
+    } else {
+        std::cout << "Table already exists.\n";
+    }
+
+    sqlite3_close(db);
+    return rc;
+}

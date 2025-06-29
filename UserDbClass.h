@@ -21,7 +21,6 @@
     int create_table();
     int check_if_table_exists();
 
-
 };
 
 #endif // !USER_DB_CLASS_H

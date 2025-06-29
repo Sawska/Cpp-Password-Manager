@@ -82,4 +82,14 @@ target_link_libraries(password_server PRIVATE
   ${ARGON2_LIB}
 )
 
+set(PAGES_SRC_DIR ${CMAKE_SOURCE_DIR}/src/pages)
+set(PAGES_DST_DIR ${CMAKE_BINARY_DIR}/pages)
+
+add_custom_command(
+    TARGET password_server POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${PAGES_SRC_DIR} ${PAGES_DST_DIR}
+    COMMENT "Copying pages folder to build directory"
+)
+
 

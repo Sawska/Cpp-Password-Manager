@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login</title>
-  <link rel="stylesheet" href="css/login.css" />
+  <link rel="stylesheet" href="../css/login.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" />
 </head>
 <body>
@@ -22,45 +22,40 @@
       <div class="row button">
         <input type="submit" value="Login" />
       </div>
-      <div class="signup-link">Don't have an account? <a href="/register.html">Register now</a></div>
+      <div class="signup-link">Don't have an account? <a href="/register">Register now</a></div>
     </form>
   </div>
 
   <script>
-    document.getElementById("loginForm").addEventListener("submit", async function (e) {
-      e.preventDefault();
+   document.getElementById("loginForm").addEventListener("submit", async function (e) {
+  e.preventDefault();
 
-      const form = e.target;
-      const login = form.login.value;
-      const password = form.password.value;
+  const form = e.target;
+  const login = form.login.value;
+  const password = form.password.value;
 
-      try {
-        const response = await fetch("/login", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ login, password })
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-
-          
-          localStorage.setItem("userId", data.Userid);    
-          localStorage.setItem("jwt", data.token);        
-
-          alert("Login successful!");
-          window.location.href = "/dashboard.html";
-        } else {
-          const error = await response.text();
-          alert("Login failed: " + error);
-        }
-      } catch (err) {
-        console.error("Network error:", err);
-        alert("Something went wrong!");
-      }
+  try {
+    const response = await fetch("/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ login, password })
     });
+
+    if (response.ok) {
+      alert("Login successful!");
+      window.location.href = "/";
+    } else {
+      const error = await response.text();
+      alert("Login failed: " + error);
+    }
+  } catch (err) {
+    console.error("Network error:", err);
+    alert("Something went wrong!");
+  }
+});
+
   </script>
 </body>
 </html>

@@ -9,7 +9,7 @@
     <link href="//maxcdn.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
 <script src="//maxcdn.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js"></script>
 <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-<link rel="stylesheet" href="css/navbar.css" />
+<link rel="stylesheet" href="../css/navbar.css" />
 
 
 
@@ -64,6 +64,8 @@ async function loadPasswords() {
   const token = localStorage.getItem("jwt");
 
   if (!userId || !token) {
+    console.log(userId);
+    console.log(token);
     document.getElementById("passwordsOutput").textContent = "Not logged in.";
     return;
   }
@@ -210,25 +212,30 @@ window.addEventListener("DOMContentLoaded", () => {
 
 
 document.getElementById("logoutBtn").addEventListener("click", async function () {
-    const token = localStorage.getItem("jwt");
-    if (!token) return alert("You are not logged in.");
+  const token = localStorage.getItem("jwt");
+  if (!token) return alert("You are not logged in.");
 
-    const res = await fetch("/logout", {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer " + token
-      }
-    });
-
-    if (res.ok) {
-      alert("Logged out successfully.");
-      localStorage.removeItem("jwt");
-      localStorage.removeItem("userId");
-      window.location.href = "/login.html";
-    } else {
-      alert("Logout failed.");
+  const res = await fetch("/logout", {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer " + token
     }
   });
+
+  if (res.ok) {
+    alert("Logged out successfully.");
+
+
+    localStorage.removeItem("jwt");
+    localStorage.removeItem("userId");
+
+
+    window.location.href = "/login";
+  } else {
+    alert("Logout failed.");
+  }
+});
+
 
   
   document.getElementById("navbarSearchForm").addEventListener("submit", async function (e) {

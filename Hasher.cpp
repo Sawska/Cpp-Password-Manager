@@ -2,32 +2,59 @@
 #include <argon2.h>
 #include <stdexcept>
 #include <cstring>
+#include <iostream>
+#include <vector>
+#include "Hasher.h"
+#include <argon2.h>
+#include <stdexcept>
+#include <cstring>
+#include <iostream>
+#include <vector>
 
 std::string Hasher::hash_password(const std::string& password) {
-    char hash[128];
-int result = argon2_hash(
-    2,                // iterations
-    1 << 16,          // memory (64MB)
-    1,                // parallelism
-    password.c_str(), password.size(),
-    "somesalt", 8,    // salt
-    hash, sizeof(hash),
-    NULL, 0,          // encoded, encodedlen
-    Argon2_id,        // Argon2id variant
-    ARGON2_VERSION_13 // version
-);
+    const uint32_t t_cost = 2;
+    const uint32_t m_cost = 1 << 15;
+    const uint32_t parallelism = 1;
+    const uint32_t saltlen = 8;
+    const uint32_t hashlen = 32;
 
-    if (result != ARGON2_OK)
+    const char* salt = "somesalt";
+
+    size_t encoded_len = argon2_encodedlen(t_cost, m_cost, parallelism, saltlen, hashlen, Argon2_id);
+    std::vector<char> encoded(encoded_len + 1, 0);
+
+    int result = argon2_hash(
+        t_cost,
+        m_cost,
+        parallelism,
+        password.c_str(), password.size(),
+        salt, saltlen,
+        nullptr, hashlen,               // <---- set hashlen properly here
+        encoded.data(), encoded.size(),
+        Argon2_id,
+        ARGON2_VERSION_13
+    );
+
+    if (result != ARGON2_OK) {
+        std::cerr << "Argon2 error: " << argon2_error_message(result) << std::endl;
         throw std::runtime_error("Argon2 hashing failed");
+    }
 
-    return std::string(hash);
+    encoded[encoded_len] = '\0';
+
+    return std::string(encoded.data());
 }
 
+
 bool Hasher::verify_password(const std::string& password, const std::string& hash) {
-    int result = argon2_verify(
-        hash.c_str(),           // encoded hash
+    if (hash.empty() || hash.find("$argon2id$") != 0) {
+        // Not a valid encoded Argon2id string
+        return false;
+    }
+
+    return argon2_verify(
+        hash.c_str(),                   // encoded hash string
         password.c_str(), password.size(),
-        Argon2_id               // Argon2id variant
-    );
-    return result == ARGON2_OK;
+        Argon2_id
+    ) == ARGON2_OK;
 }
