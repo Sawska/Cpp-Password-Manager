@@ -1,7 +1,7 @@
 #include "PasswordFilter.h"
 
 PasswordFilter::PasswordFilter(const std::map<std::string, std::string>& passwords)
-    : passwords(passwords) // Use member initializer list
+    : passwords(passwords)
 {
 }
 

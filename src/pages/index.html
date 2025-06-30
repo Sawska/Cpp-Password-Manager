@@ -7,8 +7,8 @@
 </head>
 <body>
     <link href="//maxcdn.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
-<script src="//maxcdn.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js"></script>
 <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js"></script>
 <link rel="stylesheet" href="../css/navbar.css" />
 
 
@@ -33,9 +33,8 @@
       </li>
     </ul>
 
-    <form id="navbarSearchForm" class="form-inline mb-3">
+<form id="navbarSearchForm" class="form-inline mb-3">
   <input class="form-control mr-sm-2" id="navbarSearchInput" type="text" placeholder="Website name" required>
-  <input class="form-control mr-sm-2" id="navbarUserId" type="number" placeholder="User ID" required>
   <button class="btn btn-outline-success" type="submit">Search</button>
   <button class="btn btn-outline-secondary ml-2" onclick="loadPasswords()">Clear Filter</button>
 </form>
@@ -54,28 +53,23 @@
       <button class="btn btn-success" onclick="addPasswordPrompt()">Add Password</button>
       <button class="btn btn-primary" onclick="generateLocalStorage()">Generate Local Storage</button>
       <button class="btn btn-warning" onclick="exportEncryptedPasswords()">Export Encrypted</button>
-      <button class="btn btn-secondary" onclick="importEncryptedPasswords()">Import Encrypted</button>
+     <input type="file" id="importFileInput" style="display: none" />
+<button class="btn btn-secondary" onclick="document.getElementById('importFileInput').click()">Import Encrypted</button>
+
     </div>
 </main>
 
 <script>
 async function loadPasswords() {
-  const userId = localStorage.getItem("userId"); 
-  const token = localStorage.getItem("jwt");
+  const userId = localStorage.getItem("userId");
 
-  if (!userId || !token) {
-    console.log(userId);
-    console.log(token);
+  if (!userId) {
     document.getElementById("passwordsOutput").textContent = "Not logged in.";
     return;
   }
 
   try {
-    const response = await fetch(`/get_passwords?userId=${userId}`, {
-      headers: {
-        "Authorization": "Bearer " + token
-      }
-    });
+    const response = await fetch(`/get_passwords?userId=${userId}`);
 
     if (response.ok) {
       const data = await response.json();
@@ -89,10 +83,14 @@ async function loadPasswords() {
     document.getElementById("passwordsOutput").textContent = "Network error.";
   }
 }
-
 function renderPasswords(data) {
   const container = document.getElementById("passwordsOutput");
   container.innerHTML = "";
+
+  if (!data || Object.keys(data).length === 0) {
+    container.textContent = "You have no saved passwords yet.";
+    return;
+  }
 
   Object.entries(data).forEach(([website, password]) => {
     const item = document.createElement("div");
@@ -113,18 +111,18 @@ function renderPasswords(data) {
   });
 }
 
+
+
 function addPasswordPrompt() {
   const website = prompt("Website:");
   const password = prompt("Password:");
   const userId = localStorage.getItem("userId");
-  const token = localStorage.getItem("jwt");
 
-  if (!website || !password || !userId || !token) return;
+  if (!website || !password || !userId) return;
 
   fetch("/add_password", {
     method: "POST",
     headers: {
-      "Authorization": "Bearer " + token,
       "Content-Type": "application/json"
     },
     body: JSON.stringify({ website, password, userId: parseInt(userId) })
@@ -136,12 +134,10 @@ function addPasswordPrompt() {
 
 function deletePassword(website, password) {
   const userId = localStorage.getItem("userId");
-  const token = localStorage.getItem("jwt");
 
   fetch("/delete_password", {
     method: "POST",
     headers: {
-      "Authorization": "Bearer " + token,
       "Content-Type": "application/json"
     },
     body: JSON.stringify({ website, password, userId: parseInt(userId) })
@@ -155,12 +151,10 @@ function editPassword(oldWebsite, oldPassword) {
   const newWebsite = prompt("New website:", oldWebsite);
   const newPassword = prompt("New password:", oldPassword);
   const userId = localStorage.getItem("userId");
-  const token = localStorage.getItem("jwt");
 
   fetch("/update_password", {
     method: "POST",
     headers: {
-      "Authorization": "Bearer " + token,
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
@@ -182,75 +176,80 @@ function generateLocalStorage() {
 
 function exportEncryptedPasswords() {
   const userId = localStorage.getItem("userId");
+
   fetch(`/export_passwords_encrypted?userId=${userId}`)
-    .then(res => res.text())
-    .then(text => {
-      const blob = new Blob([text], { type: "text/plain" });
+    .then(res => res.blob())  
+    .then(blob => {
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "passwords.enc.txt";
+      a.download = "passwords.enc"; 
       a.click();
     });
 }
 
-function importEncryptedPasswords() {
-  const userId = localStorage.getItem("userId");
-  const encrypted = prompt("Paste encrypted data:");
 
-  fetch(`/import_passwords_encrypted?userId=${userId}`, {
-    method: "POST",
-    body: encrypted
-  }).then(res => res.text()).then(msg => {
+
+document.getElementById("importFileInput").addEventListener("change", async function () {
+  const file = this.files[0];
+  const userId = localStorage.getItem("userId");
+
+  if (!file || !userId) {
+    alert("Missing file or user ID");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = async function () {
+    const arrayBuffer = reader.result;
+    const uint8Array = new Uint8Array(arrayBuffer);
+
+    const response = await fetch(`/import_passwords_encrypted?userId=${userId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/octet-stream"
+      },
+      body: uint8Array
+    });
+
+    const msg = await response.text();
     alert(msg);
     loadPasswords();
-  });
-}
+  };
+
+  reader.readAsArrayBuffer(file);
+});
+
+
 
 window.addEventListener("DOMContentLoaded", () => {
   loadPasswords();
 });
 
-
 document.getElementById("logoutBtn").addEventListener("click", async function () {
-  const token = localStorage.getItem("jwt");
-  if (!token) return alert("You are not logged in.");
-
-  const res = await fetch("/logout", {
-    method: "POST",
-    headers: {
-      "Authorization": "Bearer " + token
-    }
-  });
+  const res = await fetch("/logout", { method: "POST" });
 
   if (res.ok) {
     alert("Logged out successfully.");
-
-
-    localStorage.removeItem("jwt");
     localStorage.removeItem("userId");
-
-
     window.location.href = "/login";
   } else {
     alert("Logout failed.");
   }
 });
-
-
-  
-  document.getElementById("navbarSearchForm").addEventListener("submit", async function (e) {
+document.getElementById("navbarSearchForm").addEventListener("submit", async function (e) {
   e.preventDefault();
 
   const keyword = document.getElementById("navbarSearchInput").value.trim();
-  const userId = document.getElementById("navbarUserId").value.trim();
+  const userId = localStorage.getItem("userId");
 
   if (!keyword || !userId) {
-    alert("Please enter both Website and User ID.");
+    alert("Please enter a website and ensure you are logged in.");
     return;
   }
 
   try {
     const response = await fetch(`/filter_passwords_by_website/${encodeURIComponent(keyword)}?userId=${userId}`);
+
     if (!response.ok) {
       const err = await response.text();
       alert("Search failed: " + err);
@@ -258,13 +257,15 @@ document.getElementById("logoutBtn").addEventListener("click", async function ()
     }
 
     const data = await response.json();
-    renderPasswords(data);  // Reuse your existing UI renderer
-
+    renderPasswords(data);
   } catch (err) {
     console.error(err);
     alert("Network error during search.");
   }
 });
+
+
+
 
 </script>
 

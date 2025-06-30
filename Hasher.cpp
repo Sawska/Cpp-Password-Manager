@@ -29,7 +29,7 @@ std::string Hasher::hash_password(const std::string& password) {
         parallelism,
         password.c_str(), password.size(),
         salt, saltlen,
-        nullptr, hashlen,               // <---- set hashlen properly here
+        nullptr, hashlen,             
         encoded.data(), encoded.size(),
         Argon2_id,
         ARGON2_VERSION_13
@@ -48,12 +48,12 @@ std::string Hasher::hash_password(const std::string& password) {
 
 bool Hasher::verify_password(const std::string& password, const std::string& hash) {
     if (hash.empty() || hash.find("$argon2id$") != 0) {
-        // Not a valid encoded Argon2id string
+      
         return false;
     }
 
     return argon2_verify(
-        hash.c_str(),                   // encoded hash string
+        hash.c_str(),                
         password.c_str(), password.size(),
         Argon2_id
     ) == ARGON2_OK;

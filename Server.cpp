@@ -19,7 +19,7 @@ std::string get_cookie(const crow::request& req, const std::string& cookie_name)
     size_t pos = cookie_header.find(cookie_name + "=");
     if (pos == std::string::npos) return "";
 
-    pos += cookie_name.length() + 1; // move past 'cookie_name='
+    pos += cookie_name.length() + 1;
     size_t end = cookie_header.find(';', pos);
     if (end == std::string::npos) end = cookie_header.length();
 
@@ -150,7 +150,7 @@ CROW_ROUTE(app, "/register").methods("POST"_method)
         const int userid = userDb.get_userid(login, password);
         res_json["Userid"] = userid;
 
-        res.body = res_json.dump();  // <-- here is the fix
+        res.body = res_json.dump(); 
 
         res.add_header("Set-Cookie", "jwt=" + token + "; Path=/; HttpOnly; SameSite=Strict");
 
@@ -164,42 +164,41 @@ CROW_ROUTE(app, "/register").methods("POST"_method)
    CROW_ROUTE(app, "/logout").methods("POST"_method)
 ([this](const crow::request& req) {
     std::string auth = req.get_header_value("Authorization");
-    // (Optional) You can blacklist token here if you want, or just delete cookie
+ 
 
     crow::response res;
     res.code = 200;
 
-    // Delete cookie by setting expiry date in the past
     res.add_header("Set-Cookie", "jwt=; Path=/; HttpOnly; Expires=Thu, 01 Jan 1970 00:00:00 GMT");
 
     res.body = "Logged out";
     return res;
 });
 
+CROW_ROUTE(app, "/add_password").methods("POST"_method)
+([this](const crow::request& req) {
+    std::string token = get_cookie(req, "jwt");
+    if (token.empty() || !verify_jwt(token))
+        return crow::response(401, "Unauthorized");
 
-    CROW_ROUTE(app, "/add_password").methods("POST"_method)
-    ([this](const crow::request& req) {
-        std::string auth = req.get_header_value("Authorization");
-        if (auth.empty() || auth.find("Bearer ") != 0 || !verify_jwt(auth.substr(7)))
-            return crow::response(401, "Unauthorized");
+    auto body = crow::json::load(req.body);
+    if (!body) return crow::response(400, "Invalid JSON");
 
-        auto body = crow::json::load(req.body);
-        if (!body) return crow::response(400, "Invalid JSON");
+    std::string website = body["website"].s();
+    std::string password = body["password"].s();
+    int userId = body["userId"].i();
 
-        std::string website = body["website"].s();
-        std::string password = body["password"].s();
-        int userId = body["userId"].i();
+    if (passwordDb.add_password(website, password, userId) == 0)
+        return crow::response(200, "Password added");
+    else
+        return crow::response(500, "Failed to add password");
+});
 
-        if (passwordDb.add_password(website, password, userId) == 0)
-            return crow::response(200, "Password added");
-        else
-            return crow::response(500, "Failed to add password");
-    });
 
     CROW_ROUTE(app, "/delete_password").methods("POST"_method)
     ([this](const crow::request& req) {
-        std::string auth = req.get_header_value("Authorization");
-        if (auth.empty() || auth.find("Bearer ") != 0 || !verify_jwt(auth.substr(7)))
+        std::string token = get_cookie(req, "jwt");
+        if (token.empty() || !verify_jwt(token))
             return crow::response(401, "Unauthorized");
 
         auto body = crow::json::load(req.body);
@@ -217,8 +216,8 @@ CROW_ROUTE(app, "/register").methods("POST"_method)
 
     CROW_ROUTE(app, "/update_password").methods("POST"_method)
     ([this](const crow::request& req) {
-        std::string auth = req.get_header_value("Authorization");
-        if (auth.empty() || auth.find("Bearer ") != 0 || !verify_jwt(auth.substr(7)))
+        std::string token = get_cookie(req, "jwt");
+        if (token.empty() || !verify_jwt(token))
             return crow::response(401, "Unauthorized");
 
         auto body = crow::json::load(req.body);
@@ -235,25 +234,26 @@ CROW_ROUTE(app, "/register").methods("POST"_method)
         else
             return crow::response(500, "Failed to update password");
     });
+CROW_ROUTE(app, "/get_passwords").methods("GET"_method)
+([this](const crow::request& req) {
+    std::string token = get_cookie(req, "jwt");
+    if (token.empty() || !verify_jwt(token))
+        return crow::response(401, "Unauthorized");
 
-    CROW_ROUTE(app, "/get_passwords").methods("GET"_method)
-    ([this](const crow::request& req) {
-        std::string auth = req.get_header_value("Authorization");
-        if (auth.empty() || auth.find("Bearer ") != 0 || !verify_jwt(auth.substr(7)))
-            return crow::response(401, "Unauthorized");
+    auto urlParams = crow::query_string(req.url_params);
+    if (!urlParams.get("userId"))
+        return crow::response(400, "Missing userId");
 
-        auto urlParams = crow::query_string(req.url_params);
-        if (!urlParams.get("userId")) return crow::response(400, "Missing userId");
+    int userId = std::stoi(urlParams.get("userId"));
+    auto data = passwordDb.get_all_passwords_for_user(userId);
 
-        int userId = std::stoi(urlParams.get("userId"));
-        auto data = passwordDb.get_all_passwords_for_user(userId);
+    crow::json::wvalue json;
+    for (const auto& [website, pass] : data)
+        json[website] = pass;
 
-        crow::json::wvalue json;
-        for (const auto& [website, pass] : data)
-            json[website] = pass;
+    return crow::response(json);
+});
 
-        return crow::response(json);
-    });
 
 
 CROW_ROUTE(app, "/filter_passwords_by_website/<string>").methods("GET"_method)
@@ -313,8 +313,8 @@ CROW_ROUTE(app, "/generate_local_storage").methods("GET"_method)
 
 CROW_ROUTE(app, "/export_passwords_encrypted").methods("GET"_method)
 ([this](const crow::request& req) {
-    std::string auth = req.get_header_value("Authorization");
-    if (auth.empty() || auth.find("Bearer ") != 0 || !verify_jwt(auth.substr(7)))
+   std::string token = get_cookie(req, "jwt");
+    if (token.empty() || !verify_jwt(token))
         return crow::response(401, "Unauthorized");
 
     auto urlParams = crow::query_string(req.url_params);
@@ -335,7 +335,10 @@ CROW_ROUTE(app, "/export_passwords_encrypted").methods("GET"_method)
 
     try {
         std::string encrypted = encryptedLocalStorage.encrypt(plain);
-        return crow::response(200, encrypted);
+     crow::response resp(encrypted);
+    resp.set_header("Content-Type", "application/octet-stream");
+    return resp;
+
     } catch (const std::exception& e) {
         return crow::response(500, std::string("Encryption error: ") + e.what());
     }

@@ -43,13 +43,20 @@
       body: JSON.stringify({ login, password })
     });
 
-    if (response.ok) {
-      alert("Login successful!");
-      window.location.href = "/";
-    } else {
-      const error = await response.text();
-      alert("Login failed: " + error);
-    }
+  if (response.ok) {
+  const data = await response.json();
+  const userId = data.Userid;
+
+  if (!userId) {
+    alert("Login failed: Missing user ID");
+    return;
+  }
+
+  localStorage.setItem("userId", userId);
+  alert("Login successful!");
+  window.location.href = "/";
+}
+
   } catch (err) {
     console.error("Network error:", err);
     alert("Something went wrong!");

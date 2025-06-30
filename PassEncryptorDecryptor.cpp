@@ -6,9 +6,9 @@
 
 PassEncryptorDecryptor::PassEncryptorDecryptor(const std::string& key, const std::string& iv)
     : key_(key), iv_(iv) {
-    if (key_.size() != 32)  // 256-bit
+    if (key_.size() != 32) 
         throw std::invalid_argument("Key must be 32 bytes (256 bits)");
-    if (iv_.size() != 16)   // 128-bit IV
+    if (iv_.size() != 16) 
         throw std::invalid_argument("IV must be 16 bytes (128 bits)");
 }
 
