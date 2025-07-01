@@ -16,22 +16,21 @@ void AppManager::run_server() {
     server.runServer();
 }
 
-void AppManager::run_ui() {
-    std::cout << "UI started. Server running on http://127.0.0.1:18080\n";
-    std::string cmd;
-    while (true) {
-        std::cout << "Enter command (exit, help): ";
-        std::cin >> cmd;
 
-        if (cmd == "exit") break;
-        else if (cmd == "help") {
-            std::cout << "Available commands: help, exit\n";
-        } else {
-            std::cout << "Unknown command\n";
-        }
-    }
-    std::cout << "UI shutting down...\n";
+
+void AppManager::run_ui() {
+    int argc = 0;
+    char** argv = nullptr;
+
+    wxApp::SetInstance(new GuiApp());
+    wxEntryStart(argc, argv);
+    wxTheApp->CallOnInit();
+    wxTheApp->OnRun();
+    wxEntryCleanup();
 }
+
+
+
 
 void AppManager::run() {
     if (mode == AppMode::WEB) {

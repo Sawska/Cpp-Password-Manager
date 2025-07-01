@@ -2,6 +2,7 @@
 #include "Mode.h"
 #include "Server.h"
 #include <thread>
+#include "GuiApp.h"
 
 class AppManager {
 public:
