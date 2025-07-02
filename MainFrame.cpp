@@ -9,6 +9,12 @@ wxBEGIN_EVENT_TABLE(MainFrame, wxFrame)
     EVT_BUTTON(1003, MainFrame::OnDelete)
     EVT_BUTTON(1004, MainFrame::OnUpdate)
     EVT_BUTTON(1005, MainFrame::OnGenerate)
+    EVT_BUTTON(1006, MainFrame::OnLogout)
+    EVT_BUTTON(1007, MainFrame::OnFilter)
+    EVT_BUTTON(1008, MainFrame::OnExport)
+    EVT_BUTTON(1009, MainFrame::OnImport)
+    EVT_BUTTON(1010, MainFrame::OnGenerate8)
+
 wxEND_EVENT_TABLE()
 
 MainFrame::MainFrame(const wxString& title, const std::string& jwt, int userId)
@@ -65,6 +71,18 @@ MainFrame::MainFrame(const wxString& title, const std::string& jwt, int userId)
     wxStaticText* labelNewWebsite = new wxStaticText(panel, wxID_ANY, "New Website:");
     wxStaticText* labelNewPassword = new wxStaticText(panel, wxID_ANY, "New Password:");
     wxButton* updateButton = new wxButton(panel, 1004, "Update Password");
+    wxButton* generate8Btn = new wxButton(panel, 1010, "Generate 8-char Password");
+    wxButton* logoutBtn = new wxButton(panel, 1006, "Logout");
+    wxButton* filterBtn = new wxButton(panel, 1007, "Filter by Website");
+    wxButton* exportBtn = new wxButton(panel, 1008, "Export Passwords");
+    wxButton* importBtn = new wxButton(panel, 1009, "Import Passwords");
+
+    vbox->Add(generate8Btn, 0, wxALL | wxALIGN_CENTER, 5);
+    vbox->Add(filterBtn, 0, wxALL | wxALIGN_CENTER, 5);
+    vbox->Add(exportBtn, 0, wxALL | wxALIGN_CENTER, 5);
+    vbox->Add(importBtn, 0, wxALL | wxALIGN_CENTER, 5);
+    vbox->Add(logoutBtn, 0, wxALL | wxALIGN_CENTER, 5);
+
 
     passwordList = new wxListBox(panel, wxID_ANY);
     wxButton* refreshBtn = new wxButton(panel, 1001, "Refresh Passwords");
@@ -166,7 +184,7 @@ void MainFrame::OnDelete(wxCommandEvent&) {
     }
 
     std::string website = selected.substr(0, colon);
-    std::string password = selected.substr(colon + 2); // skip ": "
+    std::string password = selected.substr(colon + 2);
 
     httplib::Client client("http://127.0.0.1:18080");
     httplib::Headers headers = {{"Content-Type", "application/json"}, {"Cookie", jwt_token}};
@@ -210,6 +228,24 @@ void MainFrame::OnUpdate(wxCommandEvent&) {
     }
 }
 
+void MainFrame::OnGenerate8(wxCommandEvent&) {
+    httplib::Client client("http://127.0.0.1:18080");
+    httplib::Headers headers = {{"Cookie", jwt_token}};
+    auto res = client.Get("/generate_password/8", headers);
+
+    if (!res || res->status != 200) {
+        statusBox->SetValue("❌ Failed to generate 8-char password.");
+        return;
+    }
+
+    auto json = nlohmann::json::parse(res->body);
+    std::string gen_pass = json["generated_password"];
+
+    passwordInput->SetValue(gen_pass);
+    statusBox->SetValue("✅ Generated 8-char password.");
+} 
+
+
 void MainFrame::OnGenerate(wxCommandEvent&) {
     httplib::Client client("http://127.0.0.1:18080");
     httplib::Headers headers = {{"Cookie", jwt_token}};
@@ -225,4 +261,106 @@ void MainFrame::OnGenerate(wxCommandEvent&) {
 
     passwordInput->SetValue(gen_pass);
     statusBox->SetValue("✅ Generated password.");
+}
+
+
+void MainFrame::OnLogout(wxCommandEvent&) {
+    httplib::Client client("http://127.0.0.1:18080");
+    httplib::Headers headers = {{"Authorization", jwt_token}};
+    auto res = client.Post("/logout", headers);
+
+    if (res && res->status == 200) {
+        statusBox->SetValue("✅ Logged out.");
+        Close(); 
+    } else {
+        statusBox->SetValue("❌ Logout failed.");
+    }
+}
+
+void MainFrame::OnFilter(wxCommandEvent&) {
+    wxString input = wxGetTextFromUser("Enter website to filter:", "Filter");
+    if (input.IsEmpty()) return;
+
+    std::string website = input.ToStdString();
+
+    httplib::Client client("http://127.0.0.1:18080");
+    std::string url = "/filter_passwords_by_website/" + website + "?userId=" + std::to_string(user_id);
+    httplib::Headers headers = {{"Cookie", jwt_token}};
+    auto res = client.Get(url.c_str(), headers);
+
+    passwordList->Clear();
+
+    if (!res || res->status != 200) {
+        statusBox->SetValue("❌ Failed to filter passwords.");
+        return;
+    }
+
+    auto json = nlohmann::json::parse(res->body);
+    for (auto& [website, password] : json.items()) {
+        passwordList->Append(website + ": " + password.get<std::string>());
+    }
+
+    statusBox->SetValue("✅ Filtered passwords.");
+}
+
+void MainFrame::OnExport(wxCommandEvent&) {
+    httplib::Client client("http://127.0.0.1:18080");
+
+  
+    std::string url = "/export_passwords_encrypted?userId=" + std::to_string(user_id);
+    httplib::Headers headers = {{"Cookie", jwt_token}};
+    auto res = client.Get(url.c_str(), headers);
+
+    if (!res || res->status != 200) {
+        statusBox->SetValue("❌ Export failed.");
+        return;
+    }
+
+    wxFileDialog saveDialog(this, "Save Encrypted Passwords", "", "", "Encrypted Files (*.enc)|*.enc", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+    if (saveDialog.ShowModal() == wxID_CANCEL) {
+        statusBox->SetValue("Export canceled.");
+        return;
+    }
+
+    wxFile file(saveDialog.GetPath(), wxFile::write);
+    if (!file.IsOpened()) {
+        statusBox->SetValue("❌ Failed to open file for writing.");
+        return;
+    }
+
+    file.Write(res->body.c_str(), res->body.size());
+    file.Close();
+
+    statusBox->SetValue("✅ Exported encrypted passwords.");
+}
+
+
+
+void MainFrame::OnImport(wxCommandEvent&) {
+    wxFileDialog openDialog(this, "Open Encrypted Password File", "", "", "Encrypted Files (*.enc)|*.enc", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+    if (openDialog.ShowModal() == wxID_CANCEL) return;
+
+    wxFile file(openDialog.GetPath());
+    if (!file.IsOpened()) {
+        statusBox->SetValue("❌ Failed to open file.");
+        return;
+    }
+
+    size_t fileSize = file.Length();
+    std::vector<char> buffer(fileSize);
+    file.Read(buffer.data(), fileSize);
+    std::string encryptedData(buffer.data(), buffer.size());
+
+    httplib::Client client("http://127.0.0.1:18080");
+    std::string url = "/import_passwords_encrypted?userId=" + std::to_string(user_id);
+    httplib::Headers headers = {{"Cookie", jwt_token}};
+    auto res = client.Post(url.c_str(), headers, encryptedData, "application/octet-stream");
+
+    if (!res || res->status != 200) {
+        statusBox->SetValue("❌ Import failed.");
+        return;
+    }
+
+    FetchPasswords();
+    statusBox->SetValue("✅ Imported encrypted passwords.");
 }
