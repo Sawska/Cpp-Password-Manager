@@ -18,14 +18,15 @@ wxBEGIN_EVENT_TABLE(MainFrame, wxFrame)
 wxEND_EVENT_TABLE()
 
 MainFrame::MainFrame(const wxString& title, const std::string& jwt, int userId)
-    : wxFrame(nullptr, wxID_ANY, title, wxDefaultPosition, wxSize(600, 400)),
+    : wxFrame(nullptr, wxID_ANY, title, wxDefaultPosition, wxSize(900, 650)),
       jwt_token(jwt),
       user_id(userId) {
 
     wxPanel* panel = new wxPanel(this, wxID_ANY);
-    wxBoxSizer* vbox = new wxBoxSizer(wxVERTICAL);
+    wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
 
-   
+    
+   if (jwt.empty()) {
     LoginDialog dlg(this);
     if (dlg.ShowModal() != wxID_OK) {
         Close();
@@ -42,7 +43,6 @@ MainFrame::MainFrame(const wxString& title, const std::string& jwt, int userId)
     std::string endpoint = isRegister ? "/register" : "/login";
 
     auto res = client.Post(endpoint.c_str(), headers, body, "application/json");
-
     if (!res || res->status != 200) {
         wxMessageBox("Login/Register failed", "Error", wxICON_ERROR);
         Close();
@@ -52,74 +52,96 @@ MainFrame::MainFrame(const wxString& title, const std::string& jwt, int userId)
     jwt_token = res->get_header_value("Set-Cookie");
     auto json = nlohmann::json::parse(res->body);
     user_id = json["Userid"];
+} else {
+    jwt_token = jwt;
+    user_id = userId;
+}
 
 
-    websiteInput = new wxTextCtrl(panel, wxID_ANY);
-    passwordInput = new wxTextCtrl(panel, wxID_ANY);
-    wxStaticText* labelWebsite = new wxStaticText(panel, wxID_ANY, "Website (Add):");
-    wxStaticText* labelPassword = new wxStaticText(panel, wxID_ANY, "Password (Add):");
-    wxButton* addButton = new wxButton(panel, 1002, "Add Password");
+    
+    wxNotebook* notebook = new wxNotebook(panel, wxID_ANY);
+    
+    
+    wxPanel* addPanel = new wxPanel(notebook);
+    wxFlexGridSizer* addSizer = new wxFlexGridSizer(2, 10, 10);
+    addSizer->AddGrowableCol(1, 1);
 
-    deleteButton = new wxButton(panel, 1003, "Delete Selected Password");
+    websiteInput = new wxTextCtrl(addPanel, wxID_ANY, "", wxDefaultPosition, wxSize(250, -1));
+    passwordInput = new wxTextCtrl(addPanel, wxID_ANY, "", wxDefaultPosition, wxSize(250, -1));
+    wxButton* addButton = new wxButton(addPanel, 1002, "Add Password");
 
-    oldWebsiteInput = new wxTextCtrl(panel, wxID_ANY);
-    oldPasswordInput = new wxTextCtrl(panel, wxID_ANY);
-    newWebsiteInput = new wxTextCtrl(panel, wxID_ANY);
-    newPasswordInput = new wxTextCtrl(panel, wxID_ANY);
-    wxStaticText* labelOldWebsite = new wxStaticText(panel, wxID_ANY, "Old Website:");
-    wxStaticText* labelOldPassword = new wxStaticText(panel, wxID_ANY, "Old Password:");
-    wxStaticText* labelNewWebsite = new wxStaticText(panel, wxID_ANY, "New Website:");
-    wxStaticText* labelNewPassword = new wxStaticText(panel, wxID_ANY, "New Password:");
-    wxButton* updateButton = new wxButton(panel, 1004, "Update Password");
-    wxButton* generate8Btn = new wxButton(panel, 1010, "Generate 8-char Password");
-    wxButton* logoutBtn = new wxButton(panel, 1006, "Logout");
-    wxButton* filterBtn = new wxButton(panel, 1007, "Filter by Website");
-    wxButton* exportBtn = new wxButton(panel, 1008, "Export Passwords");
-    wxButton* importBtn = new wxButton(panel, 1009, "Import Passwords");
+    addSizer->Add(new wxStaticText(addPanel, wxID_ANY, "Website:"), 0, wxALIGN_CENTER_VERTICAL);
+    addSizer->Add(websiteInput, 1, wxEXPAND);
+    addSizer->Add(new wxStaticText(addPanel, wxID_ANY, "Password:"), 0, wxALIGN_CENTER_VERTICAL);
+    addSizer->Add(passwordInput, 1, wxEXPAND);
+    addSizer->AddStretchSpacer();
+    addSizer->Add(addButton, 0, wxALIGN_RIGHT);
+    addPanel->SetSizer(addSizer);
 
-    vbox->Add(generate8Btn, 0, wxALL | wxALIGN_CENTER, 5);
-    vbox->Add(filterBtn, 0, wxALL | wxALIGN_CENTER, 5);
-    vbox->Add(exportBtn, 0, wxALL | wxALIGN_CENTER, 5);
-    vbox->Add(importBtn, 0, wxALL | wxALIGN_CENTER, 5);
-    vbox->Add(logoutBtn, 0, wxALL | wxALIGN_CENTER, 5);
+    
+    wxPanel* updatePanel = new wxPanel(notebook);
+    wxFlexGridSizer* updateSizer = new wxFlexGridSizer(2, 10, 10);
+    updateSizer->AddGrowableCol(1, 1);
 
+    wxStaticText* selLabel = new wxStaticText(updatePanel, wxID_ANY, "Select Entry:");
+    passwordDropdown = new wxComboBox(updatePanel, wxID_ANY);
 
-    passwordList = new wxListBox(panel, wxID_ANY);
-    wxButton* refreshBtn = new wxButton(panel, 1001, "Refresh Passwords");
+    newWebsiteInput = new wxTextCtrl(updatePanel, wxID_ANY, "", wxDefaultPosition, wxSize(250, -1));
+    newPasswordInput = new wxTextCtrl(updatePanel, wxID_ANY, "", wxDefaultPosition, wxSize(250, -1));
+    wxButton* updateButton = new wxButton(updatePanel, 1004, "Update Password");
+    deleteButton = new wxButton(updatePanel, 1003, "Delete This Password");
 
-    wxButton* generateButton = new wxButton(panel, 1005, "Generate 16-char Password");
+    updateSizer->Add(selLabel, 0, wxALIGN_CENTER_VERTICAL);
+    updateSizer->Add(passwordDropdown, 1, wxEXPAND);
+    updateSizer->Add(new wxStaticText(updatePanel, wxID_ANY, "New Website:"), 0, wxALIGN_CENTER_VERTICAL);
+    updateSizer->Add(newWebsiteInput, 1, wxEXPAND);
+    updateSizer->Add(new wxStaticText(updatePanel, wxID_ANY, "New Password:"), 0, wxALIGN_CENTER_VERTICAL);
+    updateSizer->Add(newPasswordInput, 1, wxEXPAND);
+    updateSizer->Add(deleteButton, 0, wxALIGN_LEFT);
+    updateSizer->Add(updateButton, 0, wxALIGN_RIGHT);
+    updatePanel->SetSizer(updateSizer);
 
-    statusBox = new wxTextCtrl(panel, wxID_ANY, "", wxDefaultPosition, wxSize(-1, 100), wxTE_MULTILINE | wxTE_READONLY);
+    
+    wxPanel* filterPanel = new wxPanel(notebook);
+    wxBoxSizer* filterSizer = new wxBoxSizer(wxHORIZONTAL);
+    wxButton* filterBtn = new wxButton(filterPanel, 1007, "Filter By Website");
+    filterSizer->Add(filterBtn, 0, wxALL | wxALIGN_CENTER, 10);
+    filterPanel->SetSizer(filterSizer);
 
+    
+    notebook->AddPage(addPanel, "Add");
+    notebook->AddPage(updatePanel, "Update/Delete");
+    notebook->AddPage(filterPanel, "Filter");
 
-    vbox->Add(refreshBtn, 0, wxALL, 5);
+    
+    passwordList = new wxListBox(panel, wxID_ANY, wxDefaultPosition, wxDefaultSize);
+    passwordList->SetMinSize(wxSize(-1, 150));
 
-    vbox->Add(labelWebsite, 0, wxLEFT | wxRIGHT, 5);
-    vbox->Add(websiteInput, 0, wxLEFT | wxRIGHT | wxBOTTOM, 5);
-    vbox->Add(labelPassword, 0, wxLEFT | wxRIGHT, 5);
-    vbox->Add(passwordInput, 0, wxLEFT | wxRIGHT | wxBOTTOM, 5);
-    vbox->Add(addButton, 0, wxALL | wxALIGN_CENTER, 5);
-    vbox->Add(deleteButton, 0, wxALL | wxALIGN_CENTER, 5);
+    
+    wxBoxSizer* actions = new wxBoxSizer(wxHORIZONTAL);
+    actions->Add(new wxButton(panel, 1010, "Gen 8-char"), 0, wxALL, 5);
+    actions->Add(new wxButton(panel, 1005, "Gen 16-char"), 0, wxALL, 5);
+    actions->Add(new wxButton(panel, 1008, "Export"), 0, wxALL, 5);
+    actions->Add(new wxButton(panel, 1009, "Import"), 0, wxALL, 5);
+    actions->Add(new wxButton(panel, 1006, "Logout"), 0, wxALL, 5);
+    actions->Add(new wxButton(panel, 1001, "Refresh"), 0, wxALL, 5);
 
-    vbox->Add(labelOldWebsite, 0, wxLEFT | wxRIGHT, 5);
-    vbox->Add(oldWebsiteInput, 0, wxLEFT | wxRIGHT | wxBOTTOM, 5);
-    vbox->Add(labelOldPassword, 0, wxLEFT | wxRIGHT, 5);
-    vbox->Add(oldPasswordInput, 0, wxLEFT | wxRIGHT | wxBOTTOM, 5);
-    vbox->Add(labelNewWebsite, 0, wxLEFT | wxRIGHT, 5);
-    vbox->Add(newWebsiteInput, 0, wxLEFT | wxRIGHT | wxBOTTOM, 5);
-    vbox->Add(labelNewPassword, 0, wxLEFT | wxRIGHT, 5);
-    vbox->Add(newPasswordInput, 0, wxLEFT | wxRIGHT | wxBOTTOM, 5);
-    vbox->Add(updateButton, 0, wxALL | wxALIGN_CENTER, 5);
+    
+    statusBox = new wxTextCtrl(panel, wxID_ANY, "", wxDefaultPosition, wxSize(-1, 80), wxTE_MULTILINE | wxTE_READONLY);
 
-    vbox->Add(generateButton, 0, wxALL | wxALIGN_CENTER, 5);
+    
+    mainSizer->Add(notebook,      0, wxEXPAND | wxALL, 10);
+    mainSizer->Add(passwordList,  1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 10);
+    mainSizer->Add(actions,       0, wxALIGN_CENTER_HORIZONTAL | wxBOTTOM, 5);
+    mainSizer->Add(statusBox,     0, wxEXPAND | wxALL, 10);
 
-    vbox->Add(passwordList, 1, wxALL | wxEXPAND, 5);
-    vbox->Add(statusBox, 0, wxALL | wxEXPAND, 5);
+    panel->SetSizer(mainSizer);
 
-    panel->SetSizer(vbox);
-
+    
     FetchPasswords();
 }
+
+
 
 void MainFrame::FetchPasswords() {
     httplib::Client client("http://127.0.0.1:18080");
