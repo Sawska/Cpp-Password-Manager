@@ -17,6 +17,7 @@ private:
     int user_id = -1;
 
 
+
     wxListBox* passwordList = nullptr;
     wxTextCtrl* statusBox = nullptr;
 
