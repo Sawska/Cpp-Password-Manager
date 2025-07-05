@@ -1,88 +1,154 @@
 #include "LoginDialog.h"
+#include <httplib.h>
+#include <nlohmann/json.hpp>
+#include <wx/msgdlg.h>
+#include <wx/statbox.h>
+
+static wxStaticText* MakeLabel(wxWindow* parent,
+                               const wxString& text,
+                               const wxFont&  font,
+                               const wxColour& colour)
+{
+    wxStaticText* lbl = new wxStaticText(parent, wxID_ANY, text);
+    lbl->SetFont(font);
+    lbl->SetForegroundColour(colour);
+    return lbl;
+}
 
 LoginDialog::LoginDialog(wxWindow* parent)
-    : wxDialog(parent, wxID_ANY, "Login/Register", wxDefaultPosition, wxSize(300, 200)) {
-    wxBoxSizer* vbox = new wxBoxSizer(wxVERTICAL);
+    : wxDialog(parent, wxID_ANY, "🔐  Account",
+               wxDefaultPosition, wxSize(360, 260),
+               wxDEFAULT_DIALOG_STYLE | wxCLIP_CHILDREN)
+{
+    const wxColour bgPanel     ("#f5f5f5");
+    const wxColour bgInput     ("#ffffff");
+    const wxColour fgPrimary   ("#333333");
+    const wxColour accent      ("#1976D2");
+    const wxColour accentHover ("#1E88E5");
 
-    loginCtrl = new wxTextCtrl(this, wxID_ANY);
-    passwordCtrl = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxTE_PASSWORD);
+    wxFont titleFont (13, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD);
+    wxFont labelFont (11, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_MEDIUM);
+    wxFont inputFont (10, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
+    wxFont buttonFont(11, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD);
+
+    SetBackgroundColour(bgPanel);
+
+    wxBoxSizer* root = new wxBoxSizer(wxVERTICAL);
+
+    wxStaticBox* box = new wxStaticBox(this, wxID_ANY, "Credentials");
+    box->SetFont(titleFont);
+
+    wxStaticBoxSizer* boxSizer = new wxStaticBoxSizer(box, wxVERTICAL);
+
+    loginCtrl = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition,
+                               wxSize(-1, 30), wxBORDER_SIMPLE);
+    loginCtrl->SetFont(inputFont);
+    loginCtrl->SetBackgroundColour(bgInput);
+
+    passwordCtrl = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition,
+                                  wxSize(-1, 30), wxTE_PASSWORD | wxBORDER_SIMPLE);
+    passwordCtrl->SetFont(inputFont);
+    passwordCtrl->SetBackgroundColour(bgInput);
+
     registerCheck = new wxCheckBox(this, wxID_ANY, "Register instead of Login");
-    wxButton* submitBtn = new wxButton(this, wxID_OK, "Submit");
+    registerCheck->SetFont(labelFont);
+    registerCheck->SetForegroundColour(fgPrimary);
 
-     submitBtn->Bind(wxEVT_BUTTON, &LoginDialog::OnSubmit, this);
+    wxButton* submitBtn = new wxButton(this, wxID_OK, "✔️  Submit");
+    submitBtn->SetFont(buttonFont);
+    submitBtn->SetForegroundColour("#FFFFFF");
+    submitBtn->SetBackgroundColour(accent);
+    submitBtn->SetWindowStyle(wxBORDER_SIMPLE);
 
-    vbox->Add(new wxStaticText(this, wxID_ANY, "Login:"), 0, wxALL, 5);
-    vbox->Add(loginCtrl, 0, wxALL | wxEXPAND, 5);
-    vbox->Add(new wxStaticText(this, wxID_ANY, "Password:"), 0, wxALL, 5);
-    vbox->Add(passwordCtrl, 0, wxALL | wxEXPAND, 5);
-    vbox->Add(registerCheck, 0, wxALL, 5);
-    vbox->Add(submitBtn, 0, wxALL | wxALIGN_CENTER, 5);
+    // hover effect
+    submitBtn->Bind(wxEVT_ENTER_WINDOW, [=](wxMouseEvent&)
+    {
+        submitBtn->SetBackgroundColour(accentHover);
+        submitBtn->Refresh();
+    });
+    submitBtn->Bind(wxEVT_LEAVE_WINDOW, [=](wxMouseEvent&)
+    {
+        submitBtn->SetBackgroundColour(accent);
+        submitBtn->Refresh();
+    });
 
-    SetSizer(vbox);
+    submitBtn->Bind(wxEVT_BUTTON, &LoginDialog::OnSubmit, this);
+
+    boxSizer->Add(MakeLabel(this, "👤 Login:",    labelFont, fgPrimary),
+                  0, wxTOP | wxLEFT | wxRIGHT, 8);
+    boxSizer->Add(loginCtrl,
+                  0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 8);
+
+    boxSizer->Add(MakeLabel(this, "🔑 Password:", labelFont, fgPrimary),
+                  0, wxLEFT | wxRIGHT, 8);
+    boxSizer->Add(passwordCtrl,
+                  0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 8);
+
+    boxSizer->Add(registerCheck,
+                  0, wxLEFT | wxRIGHT | wxBOTTOM, 8);
+
+    boxSizer->Add(submitBtn,
+                  0, wxALIGN_CENTER | wxALL, 8);
+
+    root->Add(boxSizer, 1, wxEXPAND | wxALL, 15);
+    SetSizerAndFit(root);
     Centre();
 }
 
-std::string LoginDialog::GetLogin() const {
-    return loginCtrl->GetValue().ToStdString();
-}
 
-std::string LoginDialog::GetPassword() const {
-    return passwordCtrl->GetValue().ToStdString();
-}
+std::string LoginDialog::GetLogin()       const { return loginCtrl->GetValue().ToStdString(); }
+std::string LoginDialog::GetPassword()    const { return passwordCtrl->GetValue().ToStdString(); }
+bool        LoginDialog::IsRegistering()  const { return registerCheck->IsChecked(); }
+std::string LoginDialog::GetJwtToken()    const { return jwtToken; }
+int         LoginDialog::GetUserId()      const { return userId; }
 
-bool LoginDialog::IsRegistering() const {
-    return registerCheck->IsChecked();
-}
 
-std::string LoginDialog::GetJwtToken() const {
-    return jwtToken;
-}
-
-int LoginDialog::GetUserId() const {
-    return userId;
-}
-
-#include <httplib.h>
-#include <nlohmann/json.hpp>
-#include <wx/msgdlg.h> 
-
-void LoginDialog::OnSubmit(wxCommandEvent&) {
-    std::string login = GetLogin();
+void LoginDialog::OnSubmit(wxCommandEvent&)
+{
+    std::string login    = GetLogin();
     std::string password = GetPassword();
 
-    if (login.empty() || password.empty()) {
-        wxMessageBox("Login and password must not be empty", "Validation Error", wxOK | wxICON_WARNING);
+    if (login.empty() || password.empty())
+    {
+        wxMessageBox("Login and password must not be empty",
+                     "Validation Error",
+                     wxOK | wxICON_WARNING);
         return;
     }
 
     httplib::Client client("http://127.0.0.1:18080");
-    httplib::Headers headers = {
-        {"Content-Type", "application/json"}
-    };
+    httplib::Headers headers = { { "Content-Type", "application/json" } };
 
     std::string route = IsRegistering() ? "/register" : "/login";
-    std::string body = "{\"login\":\"" + login + "\", \"password\":\"" + password + "\"}";
+    std::string body =
+        "{\"login\":\"" + login + "\", \"password\":\"" + password + "\"}";
 
     auto res = client.Post(route.c_str(), headers, body, "application/json");
 
-    if (res && res->status == 200) {
-        try {
+    if (res && res->status == 200)
+    {
+        try
+        {
             auto json = nlohmann::json::parse(res->body);
-            userId = json["Userid"];
-        } catch (...) {
-            wxMessageBox("Failed to parse response from server", "Error", wxOK | wxICON_ERROR);
+            userId   = json["Userid"];
+        }
+        catch (...)
+        {
+            wxMessageBox("Failed to parse response from server",
+                         "Error", wxOK | wxICON_ERROR);
             return;
         }
 
         jwtToken = res->get_header_value("Set-Cookie");
         EndModal(wxID_OK);
-    } else {
+    }
+    else
+    {
         std::string msg = "Login/Register failed";
-        if (res) {
-            msg += ": " + res->body;
-        } else {
-            msg += ": No response from server.";
-        }
-        wxMessageBox(msg, "Authentication Failed", wxOK | wxICON_ERROR);
+        if (res) msg += ": " + res->body;
+        else     msg += ": No response from server.";
+
+        wxMessageBox(msg, "Authentication Failed",
+                     wxOK | wxICON_ERROR);
     }
 }
