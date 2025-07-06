@@ -7,6 +7,7 @@
 #include <wx/listbox.h>
 #include <wx/statline.h>
 #include <wx/textdlg.h>
+#include <wx/msgdlg.h>
 
 
     wxBEGIN_EVENT_TABLE(MainFrame, wxFrame)
@@ -24,211 +25,203 @@
     wxEND_EVENT_TABLE()
 
 
-MainFrame::MainFrame(const wxString& title,
-                     const std::string& jwt,
-                     int userId)
-    : wxFrame(nullptr, wxID_ANY, title,
-              wxDefaultPosition, wxSize(900, 650),
-              wxDEFAULT_FRAME_STYLE | wxCLIP_CHILDREN),
-      jwt_token(jwt),
-      user_id(userId)
-{
 
-    wxPanel* panel = new wxPanel(this, wxID_ANY);
-    panel->SetBackgroundColour("#f0f0f0");
+namespace {
 
-
-    wxFont titleFont      (12, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD);
-    wxFont labelFont      (11, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_MEDIUM);
-    wxFont inputFont      (10, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
-    wxFont buttonFont     (10, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD);
-    wxFont monospaceFont   (9, wxFONTFAMILY_TELETYPE, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
-
-    
-    if (jwt_token.empty())
+    void StyleTextCtrl(wxTextCtrl* ctrl,
+                       const wxColour& normalBg = "#ffffff",
+                       const wxColour& focusBg  = "#fffef7")
     {
-        LoginDialog dlg(this);
-        if (dlg.ShowModal() != wxID_OK) { Close(); return; }
+        ctrl->SetBackgroundColour(normalBg);
+        ctrl->SetForegroundColour("#333333");
+        ctrl->SetWindowStyleFlag(wxBORDER_SIMPLE);
 
-        std::string login      = dlg.GetLogin();
-        std::string password   = dlg.GetPassword();
-        bool        isRegister = dlg.IsRegistering();
-
-        httplib::Client client("http://127.0.0.1:18080");
-        httplib::Headers headers = { { "Content-Type", "application/json" } };
-        std::string body = "{\"login\":\"" + login + "\",\"password\":\"" + password + "\"}";
-        std::string ep   = isRegister ? "/register" : "/login";
-
-        auto res = client.Post(ep.c_str(), headers, body, "application/json");
-        if (!res || res->status != 200)
-        {
-            wxMessageBox("Login/Register failed", "Error", wxICON_ERROR);
-            Close(); return;
-        }
-        jwt_token = res->get_header_value("Set-Cookie");
-        auto json = nlohmann::json::parse(res->body);
-        user_id   = json["Userid"];
+        ctrl->Bind(wxEVT_SET_FOCUS,   [=](wxFocusEvent&){ ctrl->SetBackgroundColour(focusBg); ctrl->Refresh(); });
+        ctrl->Bind(wxEVT_KILL_FOCUS,  [=](wxFocusEvent&){ ctrl->SetBackgroundColour(normalBg); ctrl->Refresh(); });
+        ctrl->Bind(wxEVT_ENTER_WINDOW,[=](wxMouseEvent&){ ctrl->SetBackgroundColour(focusBg); ctrl->Refresh(); ctrl->Skip(); });
+        ctrl->Bind(wxEVT_LEAVE_WINDOW,[=](wxMouseEvent&){ ctrl->SetBackgroundColour(normalBg); ctrl->Refresh(); ctrl->Skip(); });
     }
 
-    
-    wxNotebook* notebook = new wxNotebook(panel, wxID_ANY);
 
-    
-    auto makeLabel = [&](wxWindow* parent, const wxString& text)
+    void StyleButton(wxButton* btn,
+                     const wxColour& fg,
+                     const wxColour& bg,
+                     const wxColour& hover)
     {
-        wxStaticText* l = new wxStaticText(parent, wxID_ANY, text);
-        l->SetFont(labelFont);
-        l->SetForegroundColour("#333333");
+        btn->SetForegroundColour(fg);
+        btn->SetBackgroundColour(bg);
+        btn->SetWindowStyle(wxBORDER_SIMPLE);
+
+        btn->Bind(wxEVT_ENTER_WINDOW, [=](wxMouseEvent&){ btn->SetBackgroundColour(hover); btn->Refresh(); });
+        btn->Bind(wxEVT_LEAVE_WINDOW, [=](wxMouseEvent&){ btn->SetBackgroundColour(bg);    btn->Refresh(); });
+    }
+
+    wxStaticText* MakeLabel(wxWindow* parent,
+                            const wxString& text,
+                            const wxFont& font,
+                            const wxColour& colour = "#333333")
+    {
+        auto* l = new wxStaticText(parent, wxID_ANY, text);
+        l->SetFont(font);
+        l->SetForegroundColour(colour);
         return l;
-    };
-
-    wxPanel* addPanel      = new wxPanel(notebook);
-    addPanel->SetBackgroundColour("#ffffff");
-
-    wxStaticBox* addBox    = new wxStaticBox(addPanel, wxID_ANY, "➕ Add New Password");
-    addBox->SetFont(titleFont);
-
-    wxStaticBoxSizer* addSizer = new wxStaticBoxSizer(addBox, wxVERTICAL);
-
-    wxFlexGridSizer* addGrid  = new wxFlexGridSizer(2, 10, 10);  
-    addGrid->AddGrowableCol(1, 1);
-
-    websiteInput  = new wxTextCtrl(addPanel, wxID_ANY, "",
-                                   wxDefaultPosition, wxSize(250, 28));
-    websiteInput->SetFont(inputFont);
-
-    passwordInput = new wxTextCtrl(addPanel, wxID_ANY, "",
-                                   wxDefaultPosition, wxSize(250, 28));
-    passwordInput->SetFont(inputFont);
-
-    wxButton* addBtn = new wxButton(addPanel, 1002, "💾 Save");
-    addBtn->SetFont(buttonFont);
-    addBtn->SetForegroundColour("#1976D2");
-    addBtn->SetBackgroundColour("#f9f9f9");
-    addBtn->SetWindowStyle(wxBORDER_SIMPLE);
-
-    addGrid->Add(makeLabel(addPanel, "🌐 Website:"), 0, wxALIGN_CENTER_VERTICAL);
-    addGrid->Add(websiteInput,              1, wxEXPAND);
-    addGrid->Add(makeLabel(addPanel, "🔒 Password:"), 0, wxALIGN_CENTER_VERTICAL);
-    addGrid->Add(passwordInput,             1, wxEXPAND);
-    addGrid->AddSpacer(1);
-    addGrid->Add(addBtn,                    0, wxALIGN_RIGHT | wxTOP, 5);
-
-    addSizer->Add(addGrid, 1, wxALL | wxEXPAND, 10);
-    addPanel->SetSizer(addSizer);
-
-    wxPanel* updPanel      = new wxPanel(notebook);
-    updPanel->SetBackgroundColour("#ffffff");
-
-    wxStaticBox* updBox    = new wxStaticBox(updPanel, wxID_ANY, "✏️  Update / Delete");
-    updBox->SetFont(titleFont);
-
-    wxStaticBoxSizer* updSizer = new wxStaticBoxSizer(updBox, wxVERTICAL);
-    wxFlexGridSizer*  updGrid  = new wxFlexGridSizer(2, 10, 10);
-    updGrid->AddGrowableCol(1, 1);
-
-    wxStaticText* selLabel = new wxStaticText(updPanel, wxID_ANY,
-                                              "Select entry in list above");
-    selLabel->SetFont(labelFont);
-    selLabel->SetForegroundColour("#555555");
-
-    newWebsiteInput  = new wxTextCtrl(updPanel, wxID_ANY, "",
-                                      wxDefaultPosition, wxSize(250, 28));
-    newWebsiteInput->SetFont(inputFont);
-
-    newPasswordInput = new wxTextCtrl(updPanel, wxID_ANY, "",
-                                      wxDefaultPosition, wxSize(250, 28));
-    newPasswordInput->SetFont(inputFont);
-
-    wxButton* updBtn = new wxButton(updPanel, 1004, "🔄 Update");
-    updBtn->SetFont(buttonFont);
-    updBtn->SetForegroundColour("#1976D2");
-    updBtn->SetBackgroundColour("#f9f9f9");
-    updBtn->SetWindowStyle(wxBORDER_SIMPLE);
-
-    deleteButton    = new wxButton(updPanel, 1003, "🗑️ Delete");
-    deleteButton->SetFont(buttonFont);
-    deleteButton->SetForegroundColour("#D32F2F");
-    deleteButton->SetBackgroundColour("#f9f9f9");
-    deleteButton->SetWindowStyle(wxBORDER_SIMPLE);
-
-    updGrid->Add(selLabel,         0, wxBOTTOM, 5);
-    updGrid->AddSpacer(1);
-    updGrid->Add(makeLabel(updPanel, "🔄 New Website:"),   0, wxALIGN_CENTER_VERTICAL);
-    updGrid->Add(newWebsiteInput,  1, wxEXPAND);
-    updGrid->Add(makeLabel(updPanel, "🔑 New Password:"),  0, wxALIGN_CENTER_VERTICAL);
-    updGrid->Add(newPasswordInput, 1, wxEXPAND);
-    updGrid->Add(deleteButton,     0, wxALIGN_LEFT);
-    updGrid->Add(updBtn,           0, wxALIGN_RIGHT);
-
-    updSizer->Add(updGrid, 1, wxALL | wxEXPAND, 10);
-    updPanel->SetSizer(updSizer);
-
-    wxPanel* filterPanel   = new wxPanel(notebook);
-    filterPanel->SetBackgroundColour("#ffffff");
-
-    wxBoxSizer* filterSizer = new wxBoxSizer(wxHORIZONTAL);
-    wxButton* filterBtn = new wxButton(filterPanel, 1007, "🔎 Filter by Website");
-    filterBtn->SetFont(buttonFont);
-    filterBtn->SetForegroundColour("#1976D2");
-    filterBtn->SetBackgroundColour("#f9f9f9");
-    filterBtn->SetWindowStyle(wxBORDER_SIMPLE);
-
-    filterSizer->Add(filterBtn, 0, wxALL | wxALIGN_CENTER, 10);
-    filterPanel->SetSizer(filterSizer);
-
-    notebook->AddPage(addPanel,   "Add");
-    notebook->AddPage(updPanel,   "Update/Delete");
-    notebook->AddPage(filterPanel,"Filter");
-
-    passwordList = new wxListBox(panel, wxID_ANY, wxDefaultPosition,
-                                 wxSize(-1, 160));
-    passwordList->SetBackgroundColour("#ffffff");
-    passwordList->SetFont(inputFont);
-    passwordList->SetForegroundColour("#222222");
-
-    wxBoxSizer* actions = new wxBoxSizer(wxHORIZONTAL);
-
-    auto makeBtn = [&](int id, const wxString& txt,
-                       const wxColour& fg = "#1976D2")
-    {
-        wxButton* b = new wxButton(panel, id, txt);
-        b->SetFont(buttonFont);
-        b->SetForegroundColour(fg);
-        b->SetBackgroundColour("#f9f9f9");
-        b->SetWindowStyle(wxBORDER_SIMPLE);
-        return b;
-    };
-
-    actions->Add(makeBtn(1010, "🔒 Gen 8‑char"),  0, wxALL, 5);
-    actions->Add(makeBtn(1005, "🔑 Gen 16‑char"), 0, wxALL, 5);
-    actions->Add(makeBtn(1008, "📤 Export"),      0, wxALL, 5);
-    actions->Add(makeBtn(1009, "📥 Import"),      0, wxALL, 5);
-    actions->Add(makeBtn(1006, "🚪 Logout", "#D32F2F"), 0, wxALL, 5);
-    actions->Add(makeBtn(1001, "🔁 Refresh"),     0, wxALL, 5);
-
-    statusBox = new wxTextCtrl(panel, wxID_ANY, "",
-                               wxDefaultPosition, wxSize(-1, 90),
-                               wxTE_MULTILINE | wxTE_READONLY | wxBORDER_SIMPLE);
-    statusBox->SetFont(monospaceFont);
-    statusBox->SetBackgroundColour("#eeeeee");
-    statusBox->SetForegroundColour("#333333");
-
-    wxBoxSizer* top = new wxBoxSizer(wxVERTICAL);
-    top->Add(notebook,     0, wxEXPAND | wxALL, 10);
-    top->Add(passwordList, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 10);
-    top->Add(actions,      0, wxALIGN_CENTER | wxBOTTOM, 5);
-    top->Add(statusBox,    0, wxEXPAND | wxALL, 10);
-
-    panel->SetSizer(top);
-    top->SetSizeHints(this);
-
-    FetchPasswords();
+    }
 }
 
 
 
+MainFrame::MainFrame(const wxString& title,
+                     const std::string& jwt,
+                     int userId)
+    : wxFrame(nullptr, wxID_ANY, title,
+              wxDefaultPosition, wxSize(1920, 1080),
+              wxDEFAULT_FRAME_STYLE | wxCLIP_CHILDREN),
+      jwt_token(jwt),
+      user_id(userId)
+{
+    const wxColour accent        ("#1976D2");
+    const wxColour accentHover   ("#1E88E5");
+    const wxColour danger        ("#D32F2F");
+    const wxColour dangerHover   ("#E53935");
+    const wxColour secondaryText ("#555555");
 
+    wxFont titleFont (12, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD);
+    wxFont labelFont (11, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_MEDIUM);
+    wxFont inputFont (10, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
+    wxFont buttonFont(10, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD);
+    wxFont monoFont  ( 9, wxFONTFAMILY_TELETYPE, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
+
+    auto* panel = new wxPanel(this);
+    panel->SetBackgroundColour("#f0f0f0");
+
+    if (jwt_token.empty()) {
+        LoginDialog dlg(this);
+        if (dlg.ShowModal() != wxID_OK) { Close(); return; }
+
+        httplib::Client           client("http://127.0.0.1:18080");
+        httplib::Headers          headers{{"Content-Type","application/json"}};
+        std::string               body = "{\"login\":\""+dlg.GetLogin()+"\",\"password\":\""+dlg.GetPassword()+"\"}";
+        const std::string         ep   = dlg.IsRegistering()?"/register":"/login";
+        if (auto res = client.Post(ep.c_str(),headers,body,"application/json"); !res || res->status!=200) {
+            wxMessageBox("Login/Register failed","Error",wxICON_ERROR); Close(); return;
+        } else {
+            jwt_token = res->get_header_value("Set-Cookie");
+            user_id   = nlohmann::json::parse(res->body)["Userid"];
+        }
+    }
+
+    auto* notebook = new wxNotebook(panel, wxID_ANY);
+    notebook->Bind(wxEVT_NOTEBOOK_PAGE_CHANGED, [=](wxBookCtrlEvent& e) {
+        for (int i=0;i<notebook->GetPageCount();++i) {
+            notebook->GetPage(i)->SetBackgroundColour(i==e.GetSelection()?"#fdfdfd":"#ffffff");
+            notebook->GetPage(i)->Refresh();
+        }
+    });
+
+    auto* addPg = new wxPanel(notebook); addPg->SetBackgroundColour("#ffffff");
+    auto* addBox = new wxStaticBox(addPg, wxID_ANY, "➕  Add New Password"); addBox->SetFont(titleFont);
+    auto* addSizer = new wxStaticBoxSizer(addBox, wxVERTICAL);
+    auto* addGrid  = new wxFlexGridSizer(2,10,10); addGrid->AddGrowableCol(1,1);
+
+    websiteInput  = new wxTextCtrl(addPg, wxID_ANY, "", wxDefaultPosition, wxSize(250,28));
+    passwordInput = new wxTextCtrl(addPg, wxID_ANY, "", wxDefaultPosition, wxSize(250,28));
+    websiteInput ->SetFont(inputFont);
+    passwordInput->SetFont(inputFont);
+    StyleTextCtrl(websiteInput); StyleTextCtrl(passwordInput);
+
+    auto* addBtn = new wxButton(addPg, 1002, "💾  Save"); addBtn->SetFont(buttonFont);
+    StyleButton(addBtn, "#FFFFFF", accent, accentHover);
+
+    addGrid->Add(MakeLabel(addPg,"🌐  Website:", labelFont), 0, wxALIGN_CENTER_VERTICAL);
+    addGrid->Add(websiteInput, 1, wxEXPAND);
+    addGrid->Add(MakeLabel(addPg,"🔒  Password:", labelFont),0, wxALIGN_CENTER_VERTICAL);
+    addGrid->Add(passwordInput,1, wxEXPAND);
+    addGrid->AddSpacer(1);
+    addGrid->Add(addBtn,0,wxALIGN_RIGHT|wxTOP,5);
+    addSizer->Add(addGrid,1,wxALL|wxEXPAND,10);
+    addPg->SetSizer(addSizer);
+
+    auto* updPg = new wxPanel(notebook); updPg->SetBackgroundColour("#ffffff");
+    auto* updBox = new wxStaticBox(updPg, wxID_ANY, "✏️  Update / Delete"); updBox->SetFont(titleFont);
+    auto* updSizer = new wxStaticBoxSizer(updBox, wxVERTICAL);
+    auto* updGrid  = new wxFlexGridSizer(2,10,10); updGrid->AddGrowableCol(1,1);
+
+    auto* selLabel = MakeLabel(updPg,"Select entry in list above",labelFont,secondaryText);
+    newWebsiteInput  = new wxTextCtrl(updPg, wxID_ANY, "", wxDefaultPosition, wxSize(250,28));
+    newPasswordInput = new wxTextCtrl(updPg, wxID_ANY, "", wxDefaultPosition, wxSize(250,28));
+    newWebsiteInput ->SetFont(inputFont);
+    newPasswordInput->SetFont(inputFont);
+    StyleTextCtrl(newWebsiteInput); StyleTextCtrl(newPasswordInput);
+
+    auto* updBtn = new wxButton(updPg,1004,"🔄  Update"); updBtn->SetFont(buttonFont);
+    auto* delBtn = new wxButton(updPg,1003,"🗑️  Delete"); delBtn->SetFont(buttonFont);
+    StyleButton(updBtn,"#FFFFFF",accent,accentHover);
+    StyleButton(delBtn,"#FFFFFF",danger,dangerHover);
+
+    updGrid->Add(selLabel,0,wxBOTTOM,5); updGrid->AddSpacer(1);
+    updGrid->Add(MakeLabel(updPg,"🔄  New Website:",labelFont),0,wxALIGN_CENTER_VERTICAL);
+    updGrid->Add(newWebsiteInput,1,wxEXPAND);
+    updGrid->Add(MakeLabel(updPg,"🔑  New Password:",labelFont),0,wxALIGN_CENTER_VERTICAL);
+    updGrid->Add(newPasswordInput,1,wxEXPAND);
+    updGrid->Add(delBtn,0,wxALIGN_LEFT); updGrid->Add(updBtn,0,wxALIGN_RIGHT);
+    updSizer->Add(updGrid,1,wxALL|wxEXPAND,10); updPg->SetSizer(updSizer);
+
+    // ── FILTER PAGE ──────────────────────────────────────────────────────────
+    auto* filtPg = new wxPanel(notebook); filtPg->SetBackgroundColour("#ffffff");
+    auto* filtSizer = new wxBoxSizer(wxVERTICAL);
+    auto* filtBtn = new wxButton(filtPg,1007,"🔎  Filter by Website"); filtBtn->SetFont(buttonFont);
+    StyleButton(filtBtn,"#FFFFFF",accent,accentHover);
+    filtSizer->Add(filtBtn,0,wxALL|wxALIGN_CENTER,10); filtPg->SetSizer(filtSizer);
+
+    notebook->AddPage(addPg,"Add");
+    notebook->AddPage(updPg,"Update/Delete");
+    notebook->AddPage(filtPg,"Filter");
+
+    passwordListCtrl = new wxListCtrl(panel, wxID_ANY, wxDefaultPosition,
+                                      wxSize(-1,160),
+                                      wxLC_REPORT | wxBORDER_SIMPLE);
+    passwordListCtrl->InsertColumn(0,"Website",  wxLIST_FORMAT_LEFT, 300);
+    passwordListCtrl->InsertColumn(1,"Password", wxLIST_FORMAT_LEFT, 300);
+    passwordListCtrl->SetFont(inputFont);
+    passwordListCtrl->SetBackgroundColour("#ffffff");
+    passwordListCtrl->SetTextColour("#222222");
+
+    auto* actions = new wxBoxSizer(wxHORIZONTAL);
+    auto makeActBtn=[&](int id,const wxString& txt,const wxColour& fg=accent,const wxColour& bg="#f9f9f9",const wxColour& hov="#e3f2fd"){
+        auto* b=new wxButton(panel,id,txt); b->SetFont(buttonFont); StyleButton(b,fg,bg,hov); return b;
+    };
+    actions->Add(makeActBtn(1010,"🔒  Gen 8‑char","#FFFFFF",accent,accentHover),0,wxALL,5);
+    actions->Add(makeActBtn(1005,"🔑  Gen 16‑char","#FFFFFF",accent,accentHover),0,wxALL,5);
+    actions->Add(makeActBtn(1008,"📤  Export",accent),0,wxALL,5);
+    actions->Add(makeActBtn(1009,"📥  Import",accent),0,wxALL,5);
+    actions->Add(makeActBtn(1006,"🚪  Logout","#FFFFFF",danger,dangerHover),0,wxALL,5);
+    actions->Add(makeActBtn(1001,"🔁  Refresh",accent),0,wxALL,5);
+
+    statusBox = new wxTextCtrl(panel,wxID_ANY,"",wxDefaultPosition,wxSize(-1,90),
+                               wxTE_MULTILINE|wxTE_READONLY|wxBORDER_SIMPLE);
+    statusBox->SetFont(monoFont);
+    statusBox->SetBackgroundColour("#eeeeee");
+    statusBox->SetForegroundColour("#333333");
+
+    auto* top = new wxBoxSizer(wxVERTICAL);
+    top->Add(notebook,        0, wxEXPAND|wxALL,10);
+    top->Add(passwordListCtrl,1, wxEXPAND|wxLEFT|wxRIGHT|wxBOTTOM,10);
+    top->Add(actions,         0, wxALIGN_CENTER|wxBOTTOM,5);
+    top->Add(statusBox,       0, wxEXPAND|wxALL,10);
+    panel->SetSizer(top);
+    top->SetSizeHints(this);
+
+    websiteInput     ->SetToolTip("Enter the website or service name");
+    passwordInput    ->SetToolTip("Enter your password for this site");
+    newWebsiteInput  ->SetToolTip("New website name");
+    newPasswordInput ->SetToolTip("New password value");
+    addBtn           ->SetToolTip("Save this password");
+    updBtn           ->SetToolTip("Update selected entry");
+    delBtn           ->SetToolTip("Delete selected entry");
+    filtBtn          ->SetToolTip("Filter list by website");
+
+    FetchPasswords();
+}
 
     void MainFrame::FetchPasswords() {
         httplib::Client client("http://127.0.0.1:18080");

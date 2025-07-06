@@ -17,7 +17,7 @@ static wxStaticText* MakeLabel(wxWindow* parent,
 
 LoginDialog::LoginDialog(wxWindow* parent)
     : wxDialog(parent, wxID_ANY, "🔐  Account",
-               wxDefaultPosition, wxSize(360, 260),
+               wxDefaultPosition, wxSize(360, 280),
                wxDEFAULT_DIALOG_STYLE | wxCLIP_CHILDREN)
 {
     const wxColour bgPanel     ("#f5f5f5");
@@ -25,6 +25,8 @@ LoginDialog::LoginDialog(wxWindow* parent)
     const wxColour fgPrimary   ("#333333");
     const wxColour accent      ("#1976D2");
     const wxColour accentHover ("#1E88E5");
+    const wxColour inputBorder ("#cccccc");
+    const wxColour focusBorder ("#64B5F6");
 
     wxFont titleFont (13, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD);
     wxFont labelFont (11, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_MEDIUM);
@@ -41,59 +43,81 @@ LoginDialog::LoginDialog(wxWindow* parent)
     wxStaticBoxSizer* boxSizer = new wxStaticBoxSizer(box, wxVERTICAL);
 
     loginCtrl = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition,
-                               wxSize(-1, 30), wxBORDER_SIMPLE);
+                               wxSize(-1, 32), wxBORDER_SIMPLE);
     loginCtrl->SetFont(inputFont);
     loginCtrl->SetBackgroundColour(bgInput);
+    loginCtrl->SetForegroundColour(fgPrimary);
+    loginCtrl->SetOwnForegroundColour(fgPrimary);
+    loginCtrl->SetOwnBackgroundColour(bgInput);
+    loginCtrl->SetOwnFont(inputFont);
+
+    // Focus border color change
+    loginCtrl->Bind(wxEVT_SET_FOCUS, [=](wxFocusEvent&) {
+        loginCtrl->SetBackgroundColour("#ffffff");
+        loginCtrl->SetWindowStyleFlag(wxBORDER_THEME);
+        loginCtrl->Refresh();
+    });
+    loginCtrl->Bind(wxEVT_KILL_FOCUS, [=](wxFocusEvent&) {
+        loginCtrl->SetBackgroundColour(bgInput);
+        loginCtrl->Refresh();
+    });
 
     passwordCtrl = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition,
-                                  wxSize(-1, 30), wxTE_PASSWORD | wxBORDER_SIMPLE);
+                                  wxSize(-1, 32), wxTE_PASSWORD | wxBORDER_SIMPLE);
     passwordCtrl->SetFont(inputFont);
     passwordCtrl->SetBackgroundColour(bgInput);
+    passwordCtrl->SetForegroundColour(fgPrimary);
 
-    registerCheck = new wxCheckBox(this, wxID_ANY, "Register instead of Login");
+    passwordCtrl->Bind(wxEVT_SET_FOCUS, [=](wxFocusEvent&) {
+        passwordCtrl->SetBackgroundColour("#ffffff");
+        passwordCtrl->SetWindowStyleFlag(wxBORDER_THEME);
+        passwordCtrl->Refresh();
+    });
+    passwordCtrl->Bind(wxEVT_KILL_FOCUS, [=](wxFocusEvent&) {
+        passwordCtrl->SetBackgroundColour(bgInput);
+        passwordCtrl->Refresh();
+    });
+
+    registerCheck = new wxCheckBox(this, wxID_ANY, "🆕 Register instead of Login");
     registerCheck->SetFont(labelFont);
     registerCheck->SetForegroundColour(fgPrimary);
+    registerCheck->SetBackgroundColour(bgPanel);
 
     wxButton* submitBtn = new wxButton(this, wxID_OK, "✔️  Submit");
     submitBtn->SetFont(buttonFont);
     submitBtn->SetForegroundColour("#FFFFFF");
     submitBtn->SetBackgroundColour(accent);
     submitBtn->SetWindowStyle(wxBORDER_SIMPLE);
+    submitBtn->SetMinSize(wxSize(-1, 36));
 
     // hover effect
-    submitBtn->Bind(wxEVT_ENTER_WINDOW, [=](wxMouseEvent&)
-    {
+    submitBtn->Bind(wxEVT_ENTER_WINDOW, [=](wxMouseEvent&) {
         submitBtn->SetBackgroundColour(accentHover);
         submitBtn->Refresh();
     });
-    submitBtn->Bind(wxEVT_LEAVE_WINDOW, [=](wxMouseEvent&)
-    {
+    submitBtn->Bind(wxEVT_LEAVE_WINDOW, [=](wxMouseEvent&) {
         submitBtn->SetBackgroundColour(accent);
         submitBtn->Refresh();
     });
 
     submitBtn->Bind(wxEVT_BUTTON, &LoginDialog::OnSubmit, this);
 
-    boxSizer->Add(MakeLabel(this, "👤 Login:",    labelFont, fgPrimary),
-                  0, wxTOP | wxLEFT | wxRIGHT, 8);
-    boxSizer->Add(loginCtrl,
-                  0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 8);
+    // Add layout elements
+    boxSizer->AddSpacer(6);
+    boxSizer->Add(MakeLabel(this, "👤 Login:", labelFont, fgPrimary), 0, wxLEFT | wxRIGHT, 8);
+    boxSizer->Add(loginCtrl, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 8);
 
-    boxSizer->Add(MakeLabel(this, "🔑 Password:", labelFont, fgPrimary),
-                  0, wxLEFT | wxRIGHT, 8);
-    boxSizer->Add(passwordCtrl,
-                  0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 8);
+    boxSizer->Add(MakeLabel(this, "🔑 Password:", labelFont, fgPrimary), 0, wxLEFT | wxRIGHT, 8);
+    boxSizer->Add(passwordCtrl, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 8);
 
-    boxSizer->Add(registerCheck,
-                  0, wxLEFT | wxRIGHT | wxBOTTOM, 8);
-
-    boxSizer->Add(submitBtn,
-                  0, wxALIGN_CENTER | wxALL, 8);
+    boxSizer->Add(registerCheck, 0, wxLEFT | wxRIGHT | wxBOTTOM, 8);
+    boxSizer->Add(submitBtn, 0, wxALIGN_CENTER | wxALL, 8);
 
     root->Add(boxSizer, 1, wxEXPAND | wxALL, 15);
     SetSizerAndFit(root);
     Centre();
 }
+
 
 
 std::string LoginDialog::GetLogin()       const { return loginCtrl->GetValue().ToStdString(); }
