@@ -38,8 +38,8 @@ namespace {
 
         ctrl->Bind(wxEVT_SET_FOCUS,   [=](wxFocusEvent&){ ctrl->SetBackgroundColour(focusBg); ctrl->Refresh(); });
         ctrl->Bind(wxEVT_KILL_FOCUS,  [=](wxFocusEvent&){ ctrl->SetBackgroundColour(normalBg); ctrl->Refresh(); });
-        ctrl->Bind(wxEVT_ENTER_WINDOW,[=](wxMouseEvent&){ ctrl->SetBackgroundColour(focusBg); ctrl->Refresh(); ctrl->Skip(); });
-        ctrl->Bind(wxEVT_LEAVE_WINDOW,[=](wxMouseEvent&){ ctrl->SetBackgroundColour(normalBg); ctrl->Refresh(); ctrl->Skip(); });
+        ctrl->Bind(wxEVT_ENTER_WINDOW,[=](wxMouseEvent& event){ ctrl->SetBackgroundColour(focusBg); ctrl->Refresh(); event.Skip();; });
+        ctrl->Bind(wxEVT_LEAVE_WINDOW,[=](wxMouseEvent& event ){ ctrl->SetBackgroundColour(normalBg); ctrl->Refresh(); event.Skip();; });
     }
 
 
@@ -166,7 +166,7 @@ MainFrame::MainFrame(const wxString& title,
     updGrid->Add(delBtn,0,wxALIGN_LEFT); updGrid->Add(updBtn,0,wxALIGN_RIGHT);
     updSizer->Add(updGrid,1,wxALL|wxEXPAND,10); updPg->SetSizer(updSizer);
 
-    // ── FILTER PAGE ──────────────────────────────────────────────────────────
+
     auto* filtPg = new wxPanel(notebook); filtPg->SetBackgroundColour("#ffffff");
     auto* filtSizer = new wxBoxSizer(wxVERTICAL);
     auto* filtBtn = new wxButton(filtPg,1007,"🔎  Filter by Website"); filtBtn->SetFont(buttonFont);
@@ -177,17 +177,17 @@ MainFrame::MainFrame(const wxString& title,
     notebook->AddPage(updPg,"Update/Delete");
     notebook->AddPage(filtPg,"Filter");
 
-    passwordListCtrl = new wxListCtrl(panel, wxID_ANY, wxDefaultPosition,
+    passwordList = new wxListCtrl(panel, wxID_ANY, wxDefaultPosition,
                                       wxSize(-1,160),
                                       wxLC_REPORT | wxBORDER_SIMPLE);
-    passwordListCtrl->InsertColumn(0,"Website",  wxLIST_FORMAT_LEFT, 300);
-    passwordListCtrl->InsertColumn(1,"Password", wxLIST_FORMAT_LEFT, 300);
-    passwordListCtrl->SetFont(inputFont);
-    passwordListCtrl->SetBackgroundColour("#ffffff");
-    passwordListCtrl->SetTextColour("#222222");
+    passwordList->InsertColumn(0,"Website",  wxLIST_FORMAT_LEFT, 300);
+    passwordList->InsertColumn(1,"Password", wxLIST_FORMAT_LEFT, 300);
+    passwordList->SetFont(inputFont);
+    passwordList->SetBackgroundColour("#ffffff");
+    passwordList->SetTextColour("#222222");
 
     auto* actions = new wxBoxSizer(wxHORIZONTAL);
-    auto makeActBtn=[&](int id,const wxString& txt,const wxColour& fg=accent,const wxColour& bg="#f9f9f9",const wxColour& hov="#e3f2fd"){
+    auto makeActBtn=[&](int id,const wxString& txt,const wxColour& fg="#1976D2",const wxColour& bg="#f9f9f9",const wxColour& hov="#e3f2fd"){
         auto* b=new wxButton(panel,id,txt); b->SetFont(buttonFont); StyleButton(b,fg,bg,hov); return b;
     };
     actions->Add(makeActBtn(1010,"🔒  Gen 8‑char","#FFFFFF",accent,accentHover),0,wxALL,5);
@@ -205,7 +205,7 @@ MainFrame::MainFrame(const wxString& title,
 
     auto* top = new wxBoxSizer(wxVERTICAL);
     top->Add(notebook,        0, wxEXPAND|wxALL,10);
-    top->Add(passwordListCtrl,1, wxEXPAND|wxLEFT|wxRIGHT|wxBOTTOM,10);
+    top->Add(passwordList,1, wxEXPAND|wxLEFT|wxRIGHT|wxBOTTOM,10);
     top->Add(actions,         0, wxALIGN_CENTER|wxBOTTOM,5);
     top->Add(statusBox,       0, wxEXPAND|wxALL,10);
     panel->SetSizer(top);
@@ -229,7 +229,8 @@ MainFrame::MainFrame(const wxString& title,
         httplib::Headers headers = {{"Cookie", jwt_token}};
         auto res = client.Get(url.c_str(), headers);
 
-        passwordList->Clear();
+        passwordList->DeleteAllItems();
+
 
         if (!res || res->status != 200) {
             statusBox->SetValue("❌ Failed to fetch passwords.");
@@ -238,7 +239,9 @@ MainFrame::MainFrame(const wxString& title,
 
         auto json = nlohmann::json::parse(res->body);
         for (auto& [website, password] : json.items()) {
-            passwordList->Append(website + ": " + password.get<std::string>());
+            long index = passwordList->InsertItem(0, website); 
+            passwordList->SetItem(index, 1, password.get<std::string>());  
+
         }
 
         statusBox->SetValue("✅ Passwords fetched.");
@@ -272,13 +275,23 @@ MainFrame::MainFrame(const wxString& title,
     }
 
     void MainFrame::OnDelete(wxCommandEvent&) {
-        int sel = passwordList->GetSelection();
-        if (sel == wxNOT_FOUND) {
-            statusBox->SetValue("Select a password to delete.");
-            return;
-        }
+        long sel = passwordList->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
+if (sel == -1) {
+    statusBox->SetValue("Select a password to delete.");
+    return;
+}
 
-        std::string selected = passwordList->GetString(sel).ToStdString();
+
+        wxString websiteWx = passwordList->GetItemText(sel); 
+
+wxListItem item;
+item.SetId(sel);
+item.SetColumn(1); 
+passwordList->GetItem(item);
+wxString passwordWx = item.GetText();
+
+std::string selected = websiteWx.ToStdString() + ": " + passwordWx.ToStdString();
+
         size_t colon = selected.find(':');
         if (colon == std::string::npos) {
             statusBox->SetValue("Invalid format.");
@@ -303,13 +316,20 @@ MainFrame::MainFrame(const wxString& title,
     }
 
     void MainFrame::OnUpdate(wxCommandEvent&) {
-    int sel = passwordList->GetSelection();
-    if (sel == wxNOT_FOUND) {
-        statusBox->SetValue("Select a password to update.");
-        return;
-    }
+   long sel = passwordList->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
+if (sel == -1) {
+    statusBox->SetValue("Select a password to delete.");
+    return;
+}
 
-    std::string selected = passwordList->GetString(sel).ToStdString();
+    wxString website = passwordList->GetItemText(sel); 
+
+wxListItem item;
+item.SetId(sel);
+item.SetColumn(1); 
+passwordList->GetItem(item);
+wxString password = item.GetText();
+    std::string selected = website.ToStdString() + ": " + password.ToStdString();
     size_t colon = selected.find(':');
     if (colon == std::string::npos) {
         statusBox->SetValue("Invalid format.");
@@ -405,7 +425,8 @@ MainFrame::MainFrame(const wxString& title,
         httplib::Headers headers = {{"Cookie", jwt_token}};
         auto res = client.Get(url.c_str(), headers);
 
-        passwordList->Clear();
+        passwordList->DeleteAllItems();
+
 
         if (!res || res->status != 200) {
             statusBox->SetValue("❌ Failed to filter passwords.");
@@ -414,8 +435,9 @@ MainFrame::MainFrame(const wxString& title,
 
         auto json = nlohmann::json::parse(res->body);
         for (auto& [website, password] : json.items()) {
-            passwordList->Append(website + ": " + password.get<std::string>());
-        }
+    long index = passwordList->InsertItem(passwordList->GetItemCount(), website);
+    passwordList->SetItem(index, 1, password.get<std::string>());
+}
 
         statusBox->SetValue("✅ Filtered passwords.");
     }

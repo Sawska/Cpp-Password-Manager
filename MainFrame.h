@@ -5,6 +5,7 @@
 #include <string>
 #include <wx/wfstream.h>
 #include <wx/file.h>
+#include <wx/listctrl.h>
 
 
 class MainFrame : public wxFrame {
@@ -18,7 +19,7 @@ private:
 
 
 
-    wxListBox* passwordList = nullptr;
+    wxListCtrl* passwordList = nullptr;
     wxTextCtrl* statusBox = nullptr;
 
     wxTextCtrl* websiteInput = nullptr;
