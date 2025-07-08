@@ -128,14 +128,14 @@ target_link_libraries(password_server PRIVATE
 )
 
 # ===============================
-# Post-build Step (copy folder)
+# Post-build Step (copy full src)
 # ===============================
-set(PAGES_SRC_DIR ${CMAKE_SOURCE_DIR}/src/pages)
-set(PAGES_DST_DIR ${CMAKE_BINARY_DIR}/pages)
+set(SRC_DIR ${CMAKE_SOURCE_DIR}/src)
+set(SRC_DST ${CMAKE_BINARY_DIR}/src)
 
 add_custom_command(
     TARGET password_server POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${PAGES_SRC_DIR} ${PAGES_DST_DIR}
-    COMMENT "Copying pages folder to build directory"
+            "${SRC_DIR}" "${SRC_DST}"
+    COMMENT "Copying entire src folder to build directory"
 )

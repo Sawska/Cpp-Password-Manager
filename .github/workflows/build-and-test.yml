@@ -1,0 +1,39 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v3
+
+      - name: 🧰 Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            libsqlite3-dev \
+            libssl-dev \
+            libargon2-dev \
+            libwxbase3.0-dev \
+            libwxgtk3.0-gtk3-dev \
+            libasio-dev \
+            libnlohmann-json-dev
+
+      - name: 🛠️ Configure CMake
+        run: cmake -B build -S .
+
+      - name: ⚙️ Build
+        run: cmake --build build
+
+      - name: ✅ Run Tests
+        working-directory: build
+        run: ctest --output-on-failure
