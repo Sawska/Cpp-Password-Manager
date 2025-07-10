@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "UserDbClass.h"
+#include "../UserDbClass.h"
 
 TEST(UserDbTest, CreateLoginDeleteUser) {
     UserDb db;

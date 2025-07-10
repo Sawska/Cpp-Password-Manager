@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
-#include "PasswordDbClass.h"
+#include "../PasswordDbClass.h"
+
 
 TEST(PasswordDbTest, AddUpdateDeletePassword) {
     PasswordDb db("thisisakey123456", "thisisaniv123456");

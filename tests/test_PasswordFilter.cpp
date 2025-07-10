@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "PasswordFilter.h"
+#include "../PasswordFilter.h"
 
 TEST(PasswordFilterTest, FilterByWebsite) {
     std::map<std::string, std::string> db = {

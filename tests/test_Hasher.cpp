@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "Hasher.h"
+#include "../Hasher.h"
 
 TEST(HasherTest, HashAndVerify) {
     Hasher hasher;

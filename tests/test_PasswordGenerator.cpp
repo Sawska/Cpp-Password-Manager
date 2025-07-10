@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "PasswordGenerator.h"
+#include "../PasswordGenerator.h"
 
 TEST(PasswordGeneratorTest, GeneratePasswords) {
     PasswordGenerator gen;
