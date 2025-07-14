@@ -130,7 +130,7 @@ MainFrame::MainFrame(const wxString& title,
     StyleTextCtrl(websiteInput); StyleTextCtrl(passwordInput);
 
     auto* addBtn = new wxButton(addPg, 1002, "💾  Save"); addBtn->SetFont(buttonFont);
-    StyleButton(addBtn, "#FFFFFF", accent, accentHover);
+    StyleButton(addBtn,  *wxBLACK, accent, accentHover);
 
     addGrid->Add(MakeLabel(addPg,"🌐  Website:", labelFont), 0, wxALIGN_CENTER_VERTICAL);
     addGrid->Add(websiteInput, 1, wxEXPAND);
@@ -155,8 +155,8 @@ MainFrame::MainFrame(const wxString& title,
 
     auto* updBtn = new wxButton(updPg,1004,"🔄  Update"); updBtn->SetFont(buttonFont);
     auto* delBtn = new wxButton(updPg,1003,"🗑️  Delete"); delBtn->SetFont(buttonFont);
-    StyleButton(updBtn,"#FFFFFF",accent,accentHover);
-    StyleButton(delBtn,"#FFFFFF",danger,dangerHover);
+    StyleButton(updBtn,*wxBLACK,accent,accentHover);
+    StyleButton(delBtn,*wxBLACK,danger,dangerHover);
 
     updGrid->Add(selLabel,0,wxBOTTOM,5); updGrid->AddSpacer(1);
     updGrid->Add(MakeLabel(updPg,"🔄  New Website:",labelFont),0,wxALIGN_CENTER_VERTICAL);
@@ -170,7 +170,7 @@ MainFrame::MainFrame(const wxString& title,
     auto* filtPg = new wxPanel(notebook); filtPg->SetBackgroundColour("#ffffff");
     auto* filtSizer = new wxBoxSizer(wxVERTICAL);
     auto* filtBtn = new wxButton(filtPg,1007,"🔎  Filter by Website"); filtBtn->SetFont(buttonFont);
-    StyleButton(filtBtn,"#FFFFFF",accent,accentHover);
+    StyleButton(filtBtn,*wxBLACK,accent,accentHover);
     filtSizer->Add(filtBtn,0,wxALL|wxALIGN_CENTER,10); filtPg->SetSizer(filtSizer);
 
     notebook->AddPage(addPg,"Add");

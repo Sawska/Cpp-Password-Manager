@@ -17,7 +17,7 @@ static wxStaticText* MakeLabel(wxWindow* parent,
 
 LoginDialog::LoginDialog(wxWindow* parent)
     : wxDialog(parent, wxID_ANY, "🔐  Account",
-               wxDefaultPosition, wxSize(360, 280),
+               wxDefaultPosition, wxSize(1920, 1080),
                wxDEFAULT_DIALOG_STYLE | wxCLIP_CHILDREN)
 {
     const wxColour bgPanel     ("#f5f5f5");
@@ -102,7 +102,6 @@ LoginDialog::LoginDialog(wxWindow* parent)
 
     submitBtn->Bind(wxEVT_BUTTON, &LoginDialog::OnSubmit, this);
 
-    // Add layout elements
     boxSizer->AddSpacer(6);
     boxSizer->Add(MakeLabel(this, "👤 Login:", labelFont, fgPrimary), 0, wxLEFT | wxRIGHT, 8);
     boxSizer->Add(loginCtrl, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 8);
@@ -114,7 +113,8 @@ LoginDialog::LoginDialog(wxWindow* parent)
     boxSizer->Add(submitBtn, 0, wxALIGN_CENTER | wxALL, 8);
 
     root->Add(boxSizer, 1, wxEXPAND | wxALL, 15);
-    SetSizerAndFit(root);
+    SetSizer(root);
+    SetMinSize(wxSize(400, 320));
     Centre();
 }
 
