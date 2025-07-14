@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "EncryptedLocalStorage.h"
+#include "../EncryptedLocalStorage.h"
 #include <fstream>
 
 TEST(EncryptedStorageTest, WriteAndReadEncryptedFile) {
