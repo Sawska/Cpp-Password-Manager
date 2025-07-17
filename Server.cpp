@@ -123,10 +123,20 @@ CROW_ROUTE(app, "/register").methods("POST"_method)
     std::string password = body["password"].s();
 
     if (userDb.create_user(login, password) == 0) {
-        crow::json::wvalue res;
+ std::string token = create_jwt(login);
+
+        crow::response res;
+        res.code = 200;
+
+        crow::json::wvalue res_json;
         const int userid = userDb.get_userid(login, password);
-        res["Userid"] = userid;
-        return crow::response(200, res);
+        res_json["Userid"] = userid;
+
+        res.body = res_json.dump(); 
+
+        res.add_header("Set-Cookie", "jwt=" + token + "; Path=/; HttpOnly; SameSite=Strict");
+
+        return res;
     } else {
         return crow::response(500, "Registration failed");
     }

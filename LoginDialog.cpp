@@ -51,7 +51,6 @@ LoginDialog::LoginDialog(wxWindow* parent)
     loginCtrl->SetOwnBackgroundColour(bgInput);
     loginCtrl->SetOwnFont(inputFont);
 
-    // Focus border color change
     loginCtrl->Bind(wxEVT_SET_FOCUS, [=](wxFocusEvent&) {
         loginCtrl->SetBackgroundColour("#ffffff");
         loginCtrl->SetWindowStyleFlag(wxBORDER_THEME);
@@ -78,7 +77,7 @@ LoginDialog::LoginDialog(wxWindow* parent)
         passwordCtrl->Refresh();
     });
 
-    registerCheck = new wxCheckBox(this, wxID_ANY, "🆕 Register instead of Login");
+    registerCheck = new wxCheckBox(this, wxID_ANY, " Register instead of Login");
     registerCheck->SetFont(labelFont);
     registerCheck->SetForegroundColour(fgPrimary);
     registerCheck->SetBackgroundColour(bgPanel);
@@ -90,7 +89,6 @@ LoginDialog::LoginDialog(wxWindow* parent)
     submitBtn->SetWindowStyle(wxBORDER_SIMPLE);
     submitBtn->SetMinSize(wxSize(-1, 36));
 
-    // hover effect
     submitBtn->Bind(wxEVT_ENTER_WINDOW, [=](wxMouseEvent&) {
         submitBtn->SetBackgroundColour(accentHover);
         submitBtn->Refresh();
@@ -163,7 +161,24 @@ void LoginDialog::OnSubmit(wxCommandEvent&)
             return;
         }
 
-        jwtToken = res->get_header_value("Set-Cookie");
+        std::string cookie = res->get_header_value("Set-Cookie");
+
+
+size_t start = cookie.find("jwt=");
+if (start != std::string::npos)
+{
+    start += 4;
+    size_t end = cookie.find(";", start);
+    jwtToken = cookie.substr(start, end - start);
+}
+else
+{
+    wxMessageBox("Failed to extract JWT from Set-Cookie header",
+                 "Token Error", wxOK | wxICON_ERROR);
+    return;
+}
+
+        
         EndModal(wxID_OK);
     }
     else

@@ -8,6 +8,8 @@
 #include <wx/statline.h>
 #include <wx/textdlg.h>
 #include <wx/msgdlg.h>
+#include <wx/wx.h>
+
 
 
     wxBEGIN_EVENT_TABLE(MainFrame, wxFrame)
@@ -43,18 +45,27 @@ namespace {
     }
 
 
-    void StyleButton(wxButton* btn,
-                     const wxColour& fg,
-                     const wxColour& bg,
-                     const wxColour& hover)
-    {
-        btn->SetForegroundColour(fg);
-        btn->SetBackgroundColour(bg);
-        btn->SetWindowStyle(wxBORDER_SIMPLE);
+void StyleButton(wxButton* btn,
+                 const wxColour& fg,
+                 const wxColour& bg,
+                 const wxColour& hover)
+{
+    btn->SetForegroundColour(fg);
+    btn->SetBackgroundColour(bg);
+    btn->SetWindowStyle(wxBORDER_SIMPLE);
 
-        btn->Bind(wxEVT_ENTER_WINDOW, [=](wxMouseEvent&){ btn->SetBackgroundColour(hover); btn->Refresh(); });
-        btn->Bind(wxEVT_LEAVE_WINDOW, [=](wxMouseEvent&){ btn->SetBackgroundColour(bg);    btn->Refresh(); });
-    }
+    btn->Bind(wxEVT_ENTER_WINDOW, [btn, hover](wxMouseEvent&) {
+        btn->SetBackgroundColour(hover);
+        btn->Refresh();
+    });
+
+    btn->Bind(wxEVT_LEAVE_WINDOW, [btn, bg](wxMouseEvent&) {
+        btn->SetBackgroundColour(bg);
+        btn->Refresh();
+    });
+}
+
+
 
     wxStaticText* MakeLabel(wxWindow* parent,
                             const wxString& text,
@@ -129,8 +140,14 @@ MainFrame::MainFrame(const wxString& title,
     passwordInput->SetFont(inputFont);
     StyleTextCtrl(websiteInput); StyleTextCtrl(passwordInput);
 
-    auto* addBtn = new wxButton(addPg, 1002, "💾  Save"); addBtn->SetFont(buttonFont);
-    StyleButton(addBtn,  *wxBLACK, accent, accentHover);
+    
+
+
+auto* addBtn = new wxButton(addPg, 1002, "Save");
+addBtn->SetFont(buttonFont);
+
+
+
 
     addGrid->Add(MakeLabel(addPg,"🌐  Website:", labelFont), 0, wxALIGN_CENTER_VERTICAL);
     addGrid->Add(websiteInput, 1, wxEXPAND);
@@ -153,10 +170,8 @@ MainFrame::MainFrame(const wxString& title,
     newPasswordInput->SetFont(inputFont);
     StyleTextCtrl(newWebsiteInput); StyleTextCtrl(newPasswordInput);
 
-    auto* updBtn = new wxButton(updPg,1004,"🔄  Update"); updBtn->SetFont(buttonFont);
-    auto* delBtn = new wxButton(updPg,1003,"🗑️  Delete"); delBtn->SetFont(buttonFont);
-    StyleButton(updBtn,*wxBLACK,accent,accentHover);
-    StyleButton(delBtn,*wxBLACK,danger,dangerHover);
+    auto* updBtn = new wxButton(updPg,1004,"Update"); updBtn->SetFont(buttonFont);
+    auto* delBtn = new wxButton(updPg,1003,"Delete"); delBtn->SetFont(buttonFont);
 
     updGrid->Add(selLabel,0,wxBOTTOM,5); updGrid->AddSpacer(1);
     updGrid->Add(MakeLabel(updPg,"🔄  New Website:",labelFont),0,wxALIGN_CENTER_VERTICAL);
@@ -169,8 +184,7 @@ MainFrame::MainFrame(const wxString& title,
 
     auto* filtPg = new wxPanel(notebook); filtPg->SetBackgroundColour("#ffffff");
     auto* filtSizer = new wxBoxSizer(wxVERTICAL);
-    auto* filtBtn = new wxButton(filtPg,1007,"🔎  Filter by Website"); filtBtn->SetFont(buttonFont);
-    StyleButton(filtBtn,*wxBLACK,accent,accentHover);
+    auto* filtBtn = new wxButton(filtPg,1007,"Filter by Website"); filtBtn->SetFont(buttonFont);
     filtSizer->Add(filtBtn,0,wxALL|wxALIGN_CENTER,10); filtPg->SetSizer(filtSizer);
 
     notebook->AddPage(addPg,"Add");
@@ -187,15 +201,26 @@ MainFrame::MainFrame(const wxString& title,
     passwordList->SetTextColour("#222222");
 
     auto* actions = new wxBoxSizer(wxHORIZONTAL);
-    auto makeActBtn=[&](int id,const wxString& txt,const wxColour& fg="#1976D2",const wxColour& bg="#f9f9f9",const wxColour& hov="#e3f2fd"){
-        auto* b=new wxButton(panel,id,txt); b->SetFont(buttonFont); StyleButton(b,fg,bg,hov); return b;
-    };
-    actions->Add(makeActBtn(1010,"🔒  Gen 8‑char","#FFFFFF",accent,accentHover),0,wxALL,5);
-    actions->Add(makeActBtn(1005,"🔑  Gen 16‑char","#FFFFFF",accent,accentHover),0,wxALL,5);
-    actions->Add(makeActBtn(1008,"📤  Export",accent),0,wxALL,5);
-    actions->Add(makeActBtn(1009,"📥  Import",accent),0,wxALL,5);
-    actions->Add(makeActBtn(1006,"🚪  Logout","#FFFFFF",danger,dangerHover),0,wxALL,5);
-    actions->Add(makeActBtn(1001,"🔁  Refresh",accent),0,wxALL,5);
+    auto makeActBtn = [&](int id,
+                      const wxString& txt,
+                      const wxColour& fg = wxColour("#FFFFFF"),
+                      const wxColour& bg = wxColour("#1976D2"),
+                      const wxColour& hov = wxColour("#1565C0")) -> wxButton*
+{
+    auto* b = new wxButton(panel, id, txt);
+    b->SetFont(buttonFont);
+    StyleButton(b, fg, bg, hov);
+    b->SetMinSize(wxSize(-1, 36));
+    return b;
+};
+
+actions->Add(makeActBtn(1010, "Gen 8-char", wxColour("#FFFFFF"), accent, accentHover), 0, wxALL, 5);
+actions->Add(makeActBtn(1005, "Gen 16-char", wxColour("#FFFFFF"), accent, accentHover), 0, wxALL, 5);
+actions->Add(makeActBtn(1008, "Export", wxColour("#000000"), wxColour("#FFFFFF"), accentHover), 0, wxALL, 5);
+actions->Add(makeActBtn(1009, "Import", wxColour("#000000"), wxColour("#FFFFFF"), accentHover), 0, wxALL, 5);
+actions->Add(makeActBtn(1006, "Logout", wxColour("#FFFFFF"), danger, dangerHover), 0, wxALL, 5);
+actions->Add(makeActBtn(1001, "Refresh", wxColour("#FFFFFF"), accent, accentHover), 0, wxALL, 5);
+
 
     statusBox = new wxTextCtrl(panel,wxID_ANY,"",wxDefaultPosition,wxSize(-1,90),
                                wxTE_MULTILINE|wxTE_READONLY|wxBORDER_SIMPLE);
@@ -226,7 +251,11 @@ MainFrame::MainFrame(const wxString& title,
     void MainFrame::FetchPasswords() {
         httplib::Client client("http://127.0.0.1:18080");
         std::string url = "/get_passwords?userId=" + std::to_string(user_id);
-        httplib::Headers headers = {{"Cookie", jwt_token}};
+        httplib::Headers headers = {
+    {"Content-Type", "application/json"},
+    {"Cookie", "jwt=" + jwt_token}
+};
+
         auto res = client.Get(url.c_str(), headers);
 
         passwordList->DeleteAllItems();
@@ -261,7 +290,11 @@ MainFrame::MainFrame(const wxString& title,
         }
 
         httplib::Client client("http://127.0.0.1:18080");
-        httplib::Headers headers = {{"Content-Type", "application/json"}, {"Cookie", jwt_token}};
+       httplib::Headers headers = {
+    {"Content-Type", "application/json"},
+    {"Cookie", "jwt=" + jwt_token}
+};
+
         std::string body = "{\"website\":\"" + website + "\",\"password\":\"" + password + "\",\"userId\":" + std::to_string(user_id) + "}";
 
         auto res = client.Post("/add_password", headers, body, "application/json");
@@ -302,7 +335,11 @@ std::string selected = websiteWx.ToStdString() + ": " + passwordWx.ToStdString()
         std::string password = selected.substr(colon + 2);
 
         httplib::Client client("http://127.0.0.1:18080");
-        httplib::Headers headers = {{"Content-Type", "application/json"}, {"Cookie", jwt_token}};
+       httplib::Headers headers = {
+    {"Content-Type", "application/json"},
+    {"Cookie", "jwt=" + jwt_token}
+};
+
         std::string body = "{\"website\":\"" + website + "\",\"password\":\"" + password + "\",\"userId\":" + std::to_string(user_id) + "}";
 
         auto res = client.Post("/delete_password", headers, body, "application/json");
@@ -348,7 +385,11 @@ wxString password = item.GetText();
     }
 
     httplib::Client client("http://127.0.0.1:18080");
-    httplib::Headers headers = {{"Content-Type", "application/json"}, {"Cookie", jwt_token}};
+    httplib::Headers headers = {
+    {"Content-Type", "application/json"},
+    {"Cookie", "jwt=" + jwt_token}
+};
+
 
     std::string body = "{\"old_website\":\"" + oldWebsite + "\",\"old_password\":\"" + oldPassword +
                        "\",\"new_website\":\"" + newWebsite + "\",\"new_password\":\"" + newPassword +
@@ -367,7 +408,11 @@ wxString password = item.GetText();
 
     void MainFrame::OnGenerate8(wxCommandEvent&) {
         httplib::Client client("http://127.0.0.1:18080");
-        httplib::Headers headers = {{"Cookie", jwt_token}};
+        httplib::Headers headers = {
+    {"Content-Type", "application/json"},
+    {"Cookie", "jwt=" + jwt_token}
+};
+
         auto res = client.Get("/generate_password/8", headers);
 
         if (!res || res->status != 200) {
@@ -385,7 +430,11 @@ wxString password = item.GetText();
 
     void MainFrame::OnGenerate(wxCommandEvent&) {
         httplib::Client client("http://127.0.0.1:18080");
-        httplib::Headers headers = {{"Cookie", jwt_token}};
+       httplib::Headers headers = {
+    {"Content-Type", "application/json"},
+    {"Cookie", "jwt=" + jwt_token}
+};
+
         auto res = client.Get("/generate_password/16", headers);
 
         if (!res || res->status != 200) {
@@ -403,7 +452,11 @@ wxString password = item.GetText();
 
     void MainFrame::OnLogout(wxCommandEvent&) {
         httplib::Client client("http://127.0.0.1:18080");
-        httplib::Headers headers = {{"Authorization", jwt_token}};
+        httplib::Headers headers = {
+    {"Content-Type", "application/json"},
+    {"Cookie", "jwt=" + jwt_token}
+};
+
         auto res = client.Post("/logout", headers);
 
         if (res && res->status == 200) {
@@ -422,7 +475,11 @@ wxString password = item.GetText();
 
         httplib::Client client("http://127.0.0.1:18080");
         std::string url = "/filter_passwords_by_website/" + website + "?userId=" + std::to_string(user_id);
-        httplib::Headers headers = {{"Cookie", jwt_token}};
+        httplib::Headers headers = {
+    {"Content-Type", "application/json"},
+    {"Cookie", "jwt=" + jwt_token}
+};
+
         auto res = client.Get(url.c_str(), headers);
 
         passwordList->DeleteAllItems();
@@ -447,7 +504,11 @@ wxString password = item.GetText();
 
     
         std::string url = "/export_passwords_encrypted?userId=" + std::to_string(user_id);
-        httplib::Headers headers = {{"Cookie", jwt_token}};
+        httplib::Headers headers = {
+    {"Content-Type", "application/json"},
+    {"Cookie", "jwt=" + jwt_token}
+};
+
         auto res = client.Get(url.c_str(), headers);
 
         if (!res || res->status != 200) {
@@ -492,7 +553,11 @@ wxString password = item.GetText();
 
         httplib::Client client("http://127.0.0.1:18080");
         std::string url = "/import_passwords_encrypted?userId=" + std::to_string(user_id);
-        httplib::Headers headers = {{"Cookie", jwt_token}};
+        httplib::Headers headers = {
+    {"Content-Type", "application/json"},
+    {"Cookie", "jwt=" + jwt_token}
+};
+
         auto res = client.Post(url.c_str(), headers, encryptedData, "application/octet-stream");
 
         if (!res || res->status != 200) {
