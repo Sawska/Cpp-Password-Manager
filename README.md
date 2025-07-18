@@ -115,6 +115,28 @@ Or run individual test binaries:
 
 ---
 
+## 🤝 Screenshots
+
+
+<img width="1280" height="720" alt="image" src="https://github.com/user-attachments/assets/892b02a4-c7ca-4055-ad56-0a79bc5c7992" />
+
+<img width="1280" height="672" alt="image" src="https://github.com/user-attachments/assets/cd240f6f-6dd1-45b3-83df-538cc84ba77e" />
+
+<img width="646" height="171" alt="image" src="https://github.com/user-attachments/assets/d3494f46-2586-48de-a90e-9e1c37e2497a" />
+
+<img width="1280" height="672" alt="image" src="https://github.com/user-attachments/assets/6535d7d8-e169-4e0d-9f2b-2865053f9308" />
+
+<img width="1280" height="672" alt="image" src="https://github.com/user-attachments/assets/3a9e9fc1-f9bb-4322-ac72-027645d77943" />
+
+<img width="1280" height="672" alt="image" src="https://github.com/user-attachments/assets/8fac663c-78eb-46f1-befb-51986bd05d77" />
+
+
+
+
+
+
+---
+
 ## ⚙️ CI/CD Pipeline
 
 Automated builds and test runs are configured using **GitHub Actions**. On every push or pull request to `main`, the pipeline:
